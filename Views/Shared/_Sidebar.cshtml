@@ -1,0 +1,84 @@
+@{
+    // Get current controller name to highlight active nav item
+    // Replaces PHP: basename($_SERVER['PHP_SELF']) == 'borrowing.php'
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+}
+
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <img src="/images/white_logo.png" alt="Logo" class="sidebar-logo" />
+        <h1>IT Office Inventory</h1>
+        <p>Management System</p>
+    </div>
+
+    <nav class="sidebar-nav">
+
+        @* Each nav item checks if its controller is active *@
+        @* Replaces PHP: basename($_SERVER['PHP_SELF']) == 'borrowing.php' ? 'active' : '' *@
+
+        <a href="@Url.Action("Index", "Borrowing")"
+           class="nav-item @(currentController == "Borrowing" ? "active" : "")">
+            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+            Borrowing List
+        </a>
+
+        <a href="@Url.Action("Index", "Devices")"
+           class="nav-item @(currentController == "Devices" ? "active" : "")">
+            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                <path d="M8 21h8M12 17v4"/>
+            </svg>
+            Loaner Laptop
+        </a>
+
+        <a href="@Url.Action("Index", "Resigned")"
+           class="nav-item @(currentController == "Resigned" ? "active" : "")">
+            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <circle cx="10" cy="7" r="4"/>
+                <path d="M3 21c0-3.866 3.134-7 7-7" stroke-linecap="round"/>
+                <circle cx="17" cy="17" r="5"/>
+                <path d="M15 15l4 4m0-4l-4 4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Resigned
+        </a>
+
+        <a href="@Url.Action("Index", "Printers")"
+           class="nav-item @(currentController == "Printers" ? "active" : "")">
+            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <rect x="6" y="9" width="12" height="8" rx="2"/>
+                <path d="M8 3h8v4H8z"/>
+                <path d="M8 17h8v4H8z"/>
+                <circle cx="17" cy="13" r="1" fill="currentColor"/>
+            </svg>
+            Printers
+        </a>
+
+    </nav>
+
+    <div class="sidebar-bottom">
+        @* Logout link — calls AccountController.Logout() *@
+        <a href="@Url.Action("Logout", "Account")" class="nav-item nav-logout">
+            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Logout
+        </a>
+        <div class="sidebar-footer">© 2026 IT Office</div>
+    </div>
+</aside>
+
+<style>
+    .sidebar { display: flex; flex-direction: column; }
+    .sidebar-nav { flex: 1; }
+    .sidebar-bottom { padding: 12px 12px 16px; border-top: 1px solid rgba(255,255,255,.1); }
+    .nav-logout { color: rgba(255,255,255,.65) !important; margin-bottom: 10px; }
+    .nav-logout:hover { background: rgba(255,80,80,.15) !important; color: #ffaaaa !important; }
+    .sidebar-footer { padding: 0 4px; font-size: .72rem; opacity: .45; }
+</style>

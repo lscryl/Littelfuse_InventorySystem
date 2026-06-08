@@ -1,0 +1,1455 @@
+@* ============================================================
+   File: Views/Devices/Index.cshtml
+   Purpose: Loaner Laptop page — Inventory + Borrowed tabs.
+            Converted from devices.php.
+   ============================================================ *@
+
+@model ITInventorySystem.Models.DevicesViewModel
+
+@{
+    ViewData["Title"] = "Loaner Laptops";
+}
+
+<style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Main ── */
+    .main { flex: 1; padding: 24px 44px; overflow: hidden; display: flex; flex-direction: column; min-height: 0; height: 100vh; }
+
+    /* ── Page header ── */
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-shrink: 0; border-bottom: 2px solid #e4e7f0; padding-bottom: 0; }
+    .page-header h2 { font-size: 1.65rem; font-weight: 700; color: #111; padding-bottom: 12px; }
+
+    /* ── Main Tabs ── */
+    .tabs-bar { display: flex; align-items: center; }
+    .tab-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px; font-size: .75rem; font-weight: 600; font-family: 'Segoe UI', Arial, sans-serif; color: #888; background: none; border: none; border-bottom: 2.5px solid transparent; margin-bottom: -2px; cursor: pointer; text-decoration: none; white-space: nowrap; transition: color .18s, border-color .18s; }
+    .tab-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .tab-btn:hover { color: #25671E; }
+    .tab-btn.active { color: #25671E; border-bottom-color: #25671E; }
+    .tab-count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 18px; padding: 0 6px; border-radius: 9px; font-size: .62rem; font-weight: 700; background: #eef0f6; color: #777; }
+    .tab-btn.active .tab-count { background: #d6edcf; color: #1d5618; }
+
+    /* ── Tab panels ── */
+    .tab-panel { display: none; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
+    .tab-panel.active { display: flex; }
+
+    /* ── Toolbar ── */
+    .toolbar { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-shrink: 0; }
+    .search-wrap { flex: 1; position: relative; }
+    .search-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #999; pointer-events: none; }
+    .search-wrap input { width: 100%; padding: 11px 14px 11px 42px; border: 1.5px solid #dde2ef; border-radius: 10px; font-size: .75rem; background: #fff; color: #222; outline: none; transition: border-color .18s; font-family: 'Segoe UI', Arial, sans-serif; }
+    .search-wrap input:focus { border-color: #25671E; }
+    .btn-new { display: inline-flex; align-items: center; gap: 7px; background: #25671E; color: #fff; border: none; padding: 11px 22px; border-radius: 10px; font-size: .75rem; font-weight: 600; font-family: 'Segoe UI', Arial, sans-serif; cursor: pointer; white-space: nowrap; transition: background .18s; }
+    .btn-new:hover { background: #48A111; }
+    .btn-outline { display: inline-flex; align-items: center; gap: 7px; background: #fff; color: #444; border: 1.5px solid #dde2ef; padding: 11px 18px; border-radius: 10px; font-size: .75rem; font-weight: 600; font-family: 'Segoe UI', Arial, sans-serif; cursor: pointer; white-space: nowrap; transition: background .18s, border-color .18s; }
+    .btn-outline:hover { background: #f4f6fb; border-color: #c8cce0; }
+
+    /* ── Table Card ── */
+    .table-card { background: #fff; border-radius: 14px; box-shadow: 0 1px 6px rgba(0,0,0,.07); display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+    .table-scroll { overflow: auto; flex: 1; }
+    table { width: 100%; border-collapse: collapse; min-width: 700px; }
+    thead th { text-align: left; padding: 14px 18px; font-size: .65rem; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1.5px solid #eef0f6; background: #fff; position: sticky; top: 0; z-index: 1; }
+    tbody tr { border-bottom: 1px solid #f2f4fb; transition: background .14s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f7f9ff; }
+    td { padding: 14px 18px; font-size: .75rem; vertical-align: middle; }
+    .clickable-row { cursor: pointer; }
+    .device-name { font-weight: 600; color: #111; }
+    .device-model { color: #333; }
+    .empty-row td { text-align: center; color: #aaa; padding: 40px; font-size: .8rem; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 4px 13px; border-radius: 20px; font-size: .6rem; font-weight: 600; letter-spacing: .02em; }
+    .badge-available { background: #e3fbec; color: #0e9a4a; }
+    .badge-borrowed  { background: #e8f0fe; color: #1a56db; }
+    .badge-overdue   { background: #fff3e0; color: #e65100; }
+    .text-overdue    { color: #e65100; font-weight: 700; }
+
+    /* ── 3-dot dropdown ── */
+    .action-wrap { position: relative; display: inline-block; }
+    .btn-dots { background: none; border: none; cursor: pointer; padding: 6px 8px; border-radius: 6px; color: #666; display: inline-flex; align-items: center; justify-content: center; transition: background .15s; }
+    .btn-dots:hover { background: #eef0fb; color: #333; }
+    .btn-dots svg { width: 18px; height: 18px; }
+    .dropdown-menu { display: none; position: fixed; background: #fff; border: 1.5px solid #eef0f6; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); min-width: 165px; z-index: 200; overflow: hidden; animation: fadeIn .15s ease; }
+    .dropdown-menu.open { display: block; }
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+    .dropdown-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; font-size: .65rem; font-weight: 500; color: #333; cursor: pointer; border: none; background: none; width: 100%; text-align: left; transition: background .13s; font-family: 'Segoe UI', Arial, sans-serif; }
+    .dropdown-item:hover { background: #f4f6fb; }
+    .dropdown-item svg { width: 15px; height: 15px; flex-shrink: 0; color: #666; }
+    .dropdown-item.item-borrow { color: #1a56db; } .dropdown-item.item-borrow svg { color: #1a56db; }
+    .dropdown-item.item-edit   { color: #25671E; } .dropdown-item.item-edit svg   { color: #25671E; }
+    .dropdown-item.item-delete { color: #c81e1e; } .dropdown-item.item-delete svg { color: #c81e1e; }
+    .dropdown-divider { height: 1px; background: #eef0f6; margin: 4px 0; }
+
+    /* ── Overdue filter tabs ── */
+    .loan-filter-tabs { display: flex; gap: 6px; }
+    .filter-tab { padding: 8px 16px; border-radius: 8px; border: 1.5px solid #dde2ef; background: #fff; font-size: .72rem; font-weight: 600; font-family: 'Segoe UI', Arial, sans-serif; color: #666; cursor: pointer; transition: all .15s; }
+    .filter-tab.active { background: #25671E; color: #fff; border-color: #25671E; }
+    .filter-tab.overdue-highlight { border-color: #f5c2c2; color: #c81e1e; }
+    .filter-tab.overdue-highlight.active { background: #c81e1e; color: #fff; border-color: #c81e1e; }
+
+    /* ── Pagination ── */
+    .pagination-bar { display: none; align-items: center; justify-content: space-between; padding: 12px 18px; border-top: 1px solid #eef0f6; flex-shrink: 0; }
+    .pagination-info { font-size: .72rem; color: #888; }
+    .pagination-btns { display: flex; gap: 4px; }
+    .page-btn { min-width: 32px; height: 32px; padding: 0 8px; border-radius: 7px; border: 1.5px solid #dde2ef; background: #fff; color: #555; font-size: .72rem; font-weight: 600; cursor: pointer; transition: background .15s; display: inline-flex; align-items: center; justify-content: center; }
+    .page-btn:hover:not(:disabled) { background: #f4f6fb; }
+    .page-btn.active { background: #25671E; color: #fff; border-color: #25671E; }
+    .page-btn:disabled { opacity: .4; cursor: default; }
+    .page-btn svg { width: 14px; height: 14px; }
+
+    /* ── Modal ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #fff; border-radius: 16px; width: 560px; max-width: 96vw; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.18); animation: slideUp .22s ease; }
+    @@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 24px 32px 16px; border-bottom: 1.5px solid #eef0f6; }
+    .modal-header h3 { font-size: 1rem; font-weight: 700; color: #111; }
+    .modal-header-sub { font-size: .72rem; color: #888; margin-top: 3px; }
+    .modal-close { background: none; border: none; cursor: pointer; color: #aaa; padding: 4px; border-radius: 6px; transition: color .15s; display: flex; }
+    .modal-close:hover { color: #333; }
+    .modal-close svg { width: 20px; height: 20px; }
+    .modal-body { padding: 24px 32px 8px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: .7rem; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .form-group input, .form-group select { width: 100%; padding: 10px 14px; border: 1.5px solid #dde2ef; border-radius: 8px; font-size: .78rem; font-family: 'Segoe UI', Arial, sans-serif; color: #222; background: #fafbff; outline: none; transition: border-color .18s; }
+    .form-group input:focus, .form-group select:focus { border-color: #25671E; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .required { color: #c81e1e; margin-left: 2px; }
+    .modal-footer { padding: 18px 32px 26px; display: flex; justify-content: flex-end; gap: 10px; }
+    .btn-cancel { padding: 10px 22px; border-radius: 8px; border: 1.5px solid #dde2ef; background: #fff; color: #555; font-size: .75rem; font-weight: 600; font-family: 'Segoe UI', Arial, sans-serif; cursor: pointer; transition: background .15s; }
+    .btn-cancel:hover { background: #f4f6fb; }
+    .btn-submit { padding: 10px 26px; border-radius: 8px; border: none; background: #25671E; color: #fff; font-size: .75rem; font-weight: 700; font-family: 'Segoe UI', Arial, sans-serif; cursor: pointer; transition: background .18s; }
+    .btn-submit:hover { background: #48A111; }
+
+    /* ── Confirm modal ── */
+    .confirm-modal { background: #fff; border-radius: 14px; width: 360px; max-width: 96vw; padding: 28px; box-shadow: 0 16px 48px rgba(0,0,0,.16); animation: slideUp .2s ease; text-align: center; }
+    .confirm-modal .del-icon { width: 52px; height: 52px; border-radius: 50%; background: #fde8e8; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+    .confirm-modal .del-icon svg { width: 26px; height: 26px; color: #c81e1e; }
+    .confirm-modal h3 { font-size: 1rem; font-weight: 700; color: #111; margin-bottom: 8px; }
+    .confirm-modal p { font-size: .75rem; color: #666; margin-bottom: 22px; }
+    .confirm-modal-btns { display: flex; justify-content: center; gap: 10px; }
+    .btn-danger { padding: 10px 22px; border-radius: 8px; border: none; background: #c81e1e; color: #fff; font-size: .75rem; font-weight: 700; font-family: 'Segoe UI', Arial, sans-serif; cursor: pointer; transition: background .18s; }
+    .btn-danger:hover { background: #a81818; }
+
+    /* ── Detail Drawer ── */
+    #detailDrawerOverlay { display: none; position: fixed; inset: 0; background: rgba(20,30,60,.35); z-index: 150; }
+    #detailDrawer { position: fixed; top: 0; right: 0; height: 100vh; width: 420px; max-width: 96vw; background: #fff; box-shadow: -8px 0 40px rgba(0,0,0,.13); z-index: 151; display: flex; flex-direction: column; transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1); overflow: hidden; }
+    .drawer-header { padding: 24px 28px 16px; border-bottom: 1.5px solid #eef0f6; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .drawer-body { flex: 1; overflow-y: auto; padding: 22px 28px; }
+    .drawer-section-label { font-size: .6rem; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 10px; }
+    .drawer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .drawer-cell { background: #f8f9fe; border: 1.5px solid #eef0f6; border-radius: 10px; padding: 13px 15px; }
+    .drawer-cell-label { font-size: .6rem; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+    .drawer-cell-value { font-size: .8rem; font-weight: 600; color: #222; }
+
+    /* ── Import modal ── */
+    .import-modal { width: 680px; max-width: 96vw; }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 28px; right: 28px; display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-radius: 12px; background: #222; color: #fff; font-size: .78rem; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.18); z-index: 9999; transform: translateY(80px); opacity: 0; transition: transform .3s ease, opacity .3s ease; min-width: 240px; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .toast-success { background: #1c6b34; }
+    .toast-error   { background: #c81e1e; }
+</style>
+
+<div class="main">
+
+    @* ── PAGE HEADER + TABS ── *@
+    <div class="page-header">
+        <h2>🖳 Loaner Laptops</h2>
+        <div class="tabs-bar">
+            <a href="@Url.Action("Index","Devices", new { tab="inventory" })"
+               class="tab-btn @(Model.ActiveTab=="inventory"?"active":"")">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+                </svg>
+                Inventory <span class="tab-count">@Model.CountAvailable</span>
+            </a>
+            <a href="@Url.Action("Index","Devices", new { tab="borrowed" })"
+               class="tab-btn @(Model.ActiveTab=="borrowed"?"active":"")">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M5 8h14M5 8a2 2 0 1 0 0-4h14a2 2 0 1 0 0 4M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/>
+                </svg>
+                Borrowed <span class="tab-count">@Model.CountBorrowed</span>
+            </a>
+        </div>
+    </div>
+
+    @* ── INVENTORY TAB PANEL ── *@
+    <div class="tab-panel @(Model.ActiveTab=="inventory"?"active":"")" id="panel-inventory">
+        <div class="toolbar">
+            <div class="search-wrap">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input type="text" id="devSearchInput" placeholder="Search by device name, model or serial number..." onkeyup="renderTable()">
+            </div>
+            <button class="btn-outline" onclick="exportDevicesCSV()">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export CSV
+            </button>
+            <button class="btn-outline" onclick="openImportDevicesModal()">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Import CSV
+            </button>
+            <button class="btn-new" onclick="openAddDeviceModal()">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18"><path d="M12 5v14M5 12h14"/></svg>
+                Add Device
+            </button>
+        </div>
+
+        <div class="table-card">
+            <div class="table-scroll">
+                <table id="devTable">
+                    <thead>
+                        <tr>
+                            <th>Computer Name</th>
+                            <th>Borrower</th>
+                            <th>Department</th>
+                            <th>Model</th>
+                            <th>Serial Number</th>
+                            <th>Loaner Created</th>
+                            <th>Date to Return</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.Devices.Any())
+                        {
+                            <tr class="empty-row"><td colspan="9">No devices found.</td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var d in Model.Devices)
+                            {
+                                var rowId = $"dev-dd-{d.Id}";
+                                var drawerData = System.Text.Json.JsonSerializer.Serialize(new {
+                                    id             = d.Id,
+                                    device_name    = d.DeviceName,
+                                    department     = d.Department,
+                                    model          = d.Model,
+                                    serial_number  = d.SerialNumber,
+                                    os_name        = d.OsName,
+                                    release_id     = d.ReleaseId,
+                                    pic            = d.Pic,
+                                    created_at     = d.CreatedAt,
+                                    exp_return     = d.ExpectedReturn ?? "",
+                                    borrower_name  = d.BorrowerName ?? "",
+                                    bu             = d.LoanDept ?? "",
+                                    date_borrowed  = d.DateBorrowed ?? ""
+                                });
+                                <tr class="clickable-row" onclick="openDetailDrawer(@Html.Raw(drawerData))">
+                                    <td><div class="device-name">@d.DeviceName</div></td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(d.BorrowerName))
+                                        {
+                                            <span class="device-name" style="color:#1a56db;">@d.BorrowerName</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color:#ccc;">—</span>
+                                        }
+                                    </td>
+                                    <td><span class="device-model">@(string.IsNullOrEmpty(d.LoanDept ?? d.Department) ? "—" : (d.LoanDept ?? d.Department))</span></td>
+                                    <td><span class="device-model">@(string.IsNullOrEmpty(d.Model) ? "—" : d.Model)</span></td>
+                                    <td><span class="device-model">@(string.IsNullOrEmpty(d.SerialNumber) ? "—" : d.SerialNumber)</span></td>
+                                    <td><span class="device-model">@d.CreatedAt</span></td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(d.ExpectedReturn))
+                                        {
+                                            <span class="device-model">@d.ExpectedReturn</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color:#ccc;">—</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(d.BorrowerName))
+                                        {
+                                            <span class="badge badge-borrowed">On Loan</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-available">Available</span>
+                                        }
+                                    </td>
+                                    <td onclick="event.stopPropagation()">
+                                        <div class="action-wrap">
+                                            <button class="btn-dots" onclick="toggleDropdown('@rowId', event)" title="Actions">
+                                                <svg fill="currentColor" viewBox="0 0 24 24">
+                                                    <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                                                </svg>
+                                            </button>
+                                            <div class="dropdown-menu" id="@rowId">
+                                                <button class="dropdown-item item-borrow"
+                                                    onclick="closeAllDropdowns(); openBorrowModal(@d.Id, '@Html.Raw(d.DeviceName.Replace("'","\\\'"))', '@Html.Raw(d.Model.Replace("'","\\\'"))')">
+                                                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 8h14M5 8a2 2 0 1 0 0-4h14a2 2 0 1 0 0 4M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4M12 10v4"/></svg>
+                                                    Borrow Device
+                                                </button>
+                                                <div class="dropdown-divider"></div>
+                                                <button class="dropdown-item item-edit"
+                                                    onclick="closeAllDropdowns(); openEditDeviceModal(@d.Id, '@Html.Raw(d.DeviceName.Replace("'","\\\'"))', '@Html.Raw(d.SerialNumber.Replace("'","\\\'"))', '@Html.Raw(d.Model.Replace("'","\\\'"))', '@Html.Raw(d.Department.Replace("'","\\\'"))', '@Html.Raw(d.OsName.Replace("'","\\\'"))', '@Html.Raw(d.ReleaseId.Replace("'","\\\'"))', '@Html.Raw(d.Pic.Replace("'","\\\'"))')">
+                                                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                    Edit Device
+                                                </button>
+                                                <div class="dropdown-divider"></div>
+                                                <button class="dropdown-item item-delete"
+                                                    onclick="closeAllDropdowns(); openDeleteDeviceModal(@d.Id, '@Html.Raw(d.DeviceName.Replace("'","\\\'"))')">
+                                                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-bar" id="paginationBar">
+                <span class="pagination-info" id="paginationInfo"></span>
+                <div class="pagination-btns" id="paginationBtns"></div>
+            </div>
+        </div>
+    </div>@* /panel-inventory *@
+
+    @* ── BORROWED TAB PANEL ── *@
+    <div class="tab-panel @(Model.ActiveTab=="borrowed"?"active":"")" id="panel-borrowed">
+        <div class="toolbar">
+            <div class="search-wrap">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input type="text" id="loanSearchInput" placeholder="Search by device, model, serial, borrower..." onkeyup="liveSearch(this.value)">
+            </div>
+            <button class="btn-outline" onclick="exportLoansCSV()">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export CSV
+            </button>
+            <button class="btn-outline" onclick="openImportLoansModal()">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Import CSV
+            </button>
+            <button class="btn-new" onclick="openAddBorrowModal()">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18"><path d="M12 5v14M5 12h14"/></svg>
+                Borrow
+            </button>
+            @if (Model.CountOverdue > 0)
+            {
+                <div class="loan-filter-tabs">
+                    <button class="filter-tab active" id="loanFilterAll" onclick="setLoanFilter('all')">All (@Model.CountBorrowed)</button>
+                    <button class="filter-tab overdue-highlight" id="loanFilterOverdue" onclick="setLoanFilter('overdue')">Overdue (@Model.CountOverdue)</button>
+                </div>
+            }
+        </div>
+
+        <div class="table-card">
+            <div class="table-scroll">
+                <table id="loanTable">
+                    <thead>
+                        <tr>
+                            <th>Device Name</th>
+                            <th>Model</th>
+                            <th>Serial Number</th>
+                            <th>Borrower</th>
+                            <th>Department</th>
+                            <th>Date Borrowed</th>
+                            <th>Expected Return</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.Loans.Any())
+                        {
+                            <tr class="empty-row"><td colspan="9">No borrowed devices found.</td></tr>
+                        }
+                        else
+                        {
+@foreach (var l in Model.Loans)
+{
+    var searchVal = $"{l.DeviceName} {l.Model} {l.SerialNumber} {l.BorrowerName} {l.Department} {(l.IsOverdue ? "overdue" : "borrowed")}".ToLower();
+
+    var loanDetail = System.Text.Json.JsonSerializer.Serialize(new
+    {
+        device_name     = l.DeviceName ?? "",
+        model           = l.Model ?? "",
+        serial_number   = l.SerialNumber ?? "",
+        borrower_name   = l.BorrowerName ?? "",
+        department      = l.Department ?? "",
+        date_borrowed   = l.DateBorrowed ?? "",
+        expected_return = l.ExpectedReturn ?? "",
+        status          = l.IsOverdue ? "Overdue" : "Borrowed"
+    });
+
+    <tr class="clickable-row"
+        data-search="@searchVal"
+        data-detail="@Html.Encode(loanDetail)"
+        onclick="openRowDetailModal(this)">
+
+        <td>@l.DeviceName</td>
+    <td>@l.Model</td>
+    <td>@l.SerialNumber</td>
+    <td>@l.BorrowerName</td>
+    <td>@l.Department</td>
+    <td>@l.DateBorrowed</td>
+
+                                    <td>
+    @if (!string.IsNullOrEmpty(l.ExpectedReturn))
+    {
+        <span class="@(l.IsOverdue ? "text-overdue" : "")">
+            @l.ExpectedReturn
+        </span>
+    }
+    else
+    {
+        <span style="color:#ccc;">—</span>
+    }
+</td>
+                                    <td>
+                                        @if (l.IsOverdue)
+                                        {
+                                            <span class="badge badge-overdue">Overdue</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-borrowed">Borrowed</span>
+                                        }
+                                    </td>
+                                    <td onclick="event.stopPropagation()">
+                                            <div class="action-wrap">
+                                                <button class="btn-dots" onclick="toggleDropdown('loan-dd-@l.Id', event)" title="Actions">
+    <svg fill="currentColor" viewBox="0 0 24 24">
+                                                    <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                                                </svg>
+                                            </button>
+                                            <div class="dropdown-menu" id="loan-dd-@l.Id">
+                                                <button class="dropdown-item item-edit"
+                                                    onclick="closeAllDropdowns(); openEditLoanModal(@l.Id, 
+                                                    '@Html.Raw((l.BorrowerName ?? "").Replace("'","\\\'"))','@Html.Raw((l.Department ?? "").Replace("'","\\\'"))', '@l.DateBorrowed', '@(l.ExpectedReturn??"")', '@l.Status', '@(l.DateReturned??"")')">
+                                                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                    Edit
+                                                </button>
+                                                <div class="dropdown-divider"></div>
+                                                <button class="dropdown-item item-delete"
+onclick="closeAllDropdowns(); openDeleteLoanModal(@l.Id, '@Html.Raw((l.DeviceName ?? "").Replace("'","\\\'"))')">                                                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-bar" id="loanPaginationBar">
+                <span class="pagination-info" id="loanPaginationInfo"></span>
+                <div class="pagination-btns" id="loanPaginationBtns"></div>
+            </div>
+        </div>
+    </div>@* /panel-borrowed *@
+
+</div>@* /main *@
+
+@* ══ BORROW MODAL ══ *@
+<div class="modal-overlay" id="borrowModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div>
+                <h3>Borrow Device</h3>
+                <div class="modal-header-sub" id="borrowModalSub"></div>
+            </div>
+            <button class="modal-close" onclick="closeModal('borrowModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form asp-action="BorrowDevice" asp-controller="Devices" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="device_id" id="borrowDeviceId">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Borrower Name <span class="required">*</span></label>
+                    <input type="text" name="borrower_name" id="borrowerNameInput" placeholder="e.g. John Smith" required>
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <input type="text" name="department" placeholder="e.g. Engineering">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date Borrowed <span class="required">*</span></label>
+                        <input type="date" name="date_borrowed" id="borrowDateInput" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Expected Return</label>
+                        <input type="date" name="expected_return">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('borrowModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Confirm Borrow</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ══ ADD DEVICE MODAL ══ *@
+<div class="modal-overlay" id="addDeviceModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Add Device</h3>
+            <button class="modal-close" onclick="closeModal('addDeviceModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form asp-action="AddDevice" asp-controller="Devices" method="post">
+            @Html.AntiForgeryToken()
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Computer Name <span class="required">*</span></label>
+                        <input type="text" name="device_name" placeholder="e.g. PC-ACCOUNTING-01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Department</label>
+                        <input type="text" name="department" placeholder="e.g. Accounting">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Model</label>
+                        <input type="text" name="model" placeholder="e.g. Latitude E7450">
+                    </div>
+                    <div class="form-group">
+                        <label>Serial Number</label>
+                        <input type="text" name="serial_number" placeholder="e.g. SN-00123">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>OS Name</label>
+                        <input type="text" name="os_name" placeholder="e.g. Windows 11 Pro">
+                    </div>
+                    <div class="form-group">
+                        <label>Release ID</label>
+                        <input type="text" name="release_id" placeholder="e.g. 22H2">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>PIC (Person in Charge)</label>
+                    <input type="text" name="pic" placeholder="e.g. Maria Santos">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('addDeviceModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Add Device</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ══ EDIT DEVICE MODAL ══ *@
+<div class="modal-overlay" id="editDeviceModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Edit Device</h3>
+            <button class="modal-close" onclick="closeModal('editDeviceModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form asp-action="EditDevice" asp-controller="Devices" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="editDeviceId">
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Computer Name <span class="required">*</span></label>
+                        <input type="text" name="device_name" id="editDeviceName" placeholder="e.g. PC-ACCOUNTING-01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Department</label>
+                        <input type="text" name="department" id="editDeviceDept" placeholder="e.g. Accounting">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Model</label>
+                        <input type="text" name="model" id="editModel" placeholder="e.g. Latitude E7450">
+                    </div>
+                    <div class="form-group">
+                        <label>Serial Number</label>
+                        <input type="text" name="serial_number" id="editSerialNumber" placeholder="e.g. SN-00123">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>OS Name</label>
+                        <input type="text" name="os_name" id="editOsName" placeholder="e.g. Windows 11 Pro">
+                    </div>
+                    <div class="form-group">
+                        <label>Release ID</label>
+                        <input type="text" name="release_id" id="editReleaseId" placeholder="e.g. 22H2">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>PIC (Person in Charge)</label>
+                    <input type="text" name="pic" id="editPic" placeholder="e.g. Maria Santos">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('editDeviceModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ══ DELETE DEVICE MODAL ══ *@
+<div class="modal-overlay" id="deleteDeviceModal">
+    <div class="confirm-modal">
+        <div class="del-icon">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+        </div>
+        <h3>Delete Device?</h3>
+        <p id="deleteDeviceMsg">This action cannot be undone.</p>
+        <form asp-action="DeleteDevice" asp-controller="Devices" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="deleteDeviceId">
+            <div class="confirm-modal-btns">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteDeviceModal')">Cancel</button>
+                <button type="submit" class="btn-danger">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ══ EDIT LOAN MODAL ══ *@
+<div class="modal-overlay" id="editLoanModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Edit Loan</h3>
+            <button class="modal-close" onclick="closeModal('editLoanModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form asp-action="EditLoan" asp-controller="Devices" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="editLoanId">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Borrower Name <span class="required">*</span></label>
+                    <input type="text" name="borrower_name" id="editLoanBorrower" placeholder="e.g. John Smith" required>
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <input type="text" name="department" id="editLoanDept" placeholder="e.g. Engineering">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date Borrowed <span class="required">*</span></label>
+                        <input type="date" name="date_borrowed" id="editLoanDateBorrowed" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Expected Return</label>
+                        <input type="date" name="expected_return" id="editLoanExpected">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date Returned</label>
+                        <input type="date" name="date_returned" id="editLoanDateReturned">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" id="editLoanStatus">
+                            <option value="Active">Active</option>
+                            <option value="Returned">Returned</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('editLoanModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ══ DELETE LOAN MODAL ══ *@
+<div class="modal-overlay" id="deleteLoanModal">
+    <div class="confirm-modal">
+        <div class="del-icon">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+        </div>
+        <h3>Delete Loan Record?</h3>
+        <p id="deleteLoanMsg">This action cannot be undone.</p>
+        <form asp-action="DeleteLoan" asp-controller="Devices" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="deleteLoanId">
+            <div class="confirm-modal-btns">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteLoanModal')">Cancel</button>
+                <button type="submit" class="btn-danger">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ══ ADD & BORROW MODAL ══ *@
+<div class="modal-overlay" id="addBorrowModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div>
+                <h3>Add Device &amp; Borrow</h3>
+                <div class="modal-header-sub">Creates the device and logs it as borrowed immediately.</div>
+            </div>
+            <button class="modal-close" onclick="closeModal('addBorrowModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form asp-action="AddAndBorrow" asp-controller="Devices" method="post">
+            @Html.AntiForgeryToken()
+            <div class="modal-body">
+
+                <div style="font-size:.65rem;font-weight:700;color:#25671E;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid #eef0f6;">
+                    Device Info
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Computer Name <span class="required">*</span></label>
+                        <input type="text" name="device_name" placeholder="e.g. PC-ACCOUNTING-01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Model</label>
+                        <input type="text" name="model" placeholder="e.g. Latitude E7450">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Serial Number</label>
+                        <input type="text" name="serial_number" placeholder="e.g. SN-00123">
+                    </div>
+                    <div class="form-group">
+                        <label>OS Name</label>
+                        <input type="text" name="os_name" placeholder="e.g. Windows 11 Pro">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Release ID</label>
+                        <input type="text" name="release_id" placeholder="e.g. 22H2">
+                    </div>
+                    <div class="form-group">
+                        <label>PIC (Person in Charge)</label>
+                        <input type="text" name="pic" placeholder="e.g. Maria Santos">
+                    </div>
+                </div>
+
+                <div style="font-size:.65rem;font-weight:700;color:#1a56db;text-transform:uppercase;letter-spacing:.07em;margin:16px 0 10px;padding-bottom:6px;border-bottom:1.5px solid #eef0f6;">
+                    Loan Info
+                </div>
+
+                <div class="form-group">
+                    <label>Borrower Name <span class="required">*</span></label>
+                    <input type="text" name="borrower_name" placeholder="e.g. John Smith" required>
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <input type="text" name="department" placeholder="e.g. Engineering">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date Borrowed <span class="required">*</span></label>
+                        <input type="date" name="date_borrowed" id="addBorrowDateInput" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Expected Return</label>
+                        <input type="date" name="expected_return">
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('addBorrowModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Add &amp; Confirm Borrow</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ══ IMPORT DEVICES MODAL ══ *@
+<div class="modal-overlay" id="importDevicesModal">
+    <div class="modal import-modal">
+        <div class="modal-header">
+            <h3>Import Devices from CSV</h3>
+            <button class="modal-close" onclick="closeModal('importDevicesModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body" id="importDevBody">
+            <div id="importDevStep1">
+                <p style="font-size:.78rem;color:#666;margin-bottom:14px;">Upload a CSV file. The <strong>device_name</strong> column is required; all others are optional.</p>
+                <div style="background:#f8f9fe;border:1.5px solid #eef0f6;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:.7rem;color:#555;line-height:1.9;">
+                    <strong style="color:#333;">Required:</strong> device_name<br>
+                    <strong style="color:#333;">Optional:</strong> department, model, serial_number, os_name, release_id, pic
+                </div>
+                <div style="margin-bottom:14px;">
+                    <button type="button" onclick="downloadDeviceTemplate()" style="display:inline-flex;align-items:center;gap:6px;font-size:.72rem;color:#25671E;padding:7px 14px;border:1.5px solid #c8e6c0;border-radius:8px;background:#f4fbf2;cursor:pointer;font-family:inherit;font-weight:600;">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download CSV Template
+                    </button>
+                </div>
+                <label style="display:block;font-size:.7rem;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Select CSV File</label>
+                <input type="file" id="importDevFileInput" accept=".csv,text/csv" style="width:100%;padding:10px;border:1.5px solid #dde2ef;border-radius:8px;font-size:.78rem;font-family:inherit;background:#fff;cursor:pointer;">
+                <p id="importDevFileError" style="color:#c81e1e;font-size:.72rem;margin-top:6px;display:none;"></p>
+            </div>
+            <div id="importDevStep2" style="display:none;">
+                <div id="importDevSummaryBar" style="display:flex;gap:10px;margin-bottom:14px;"></div>
+                <div style="overflow-x:auto;max-height:300px;overflow-y:auto;border:1.5px solid #eef0f6;border-radius:10px;">
+                    <table style="width:100%;border-collapse:collapse;min-width:400px;">
+                        <thead><tr id="importDevHead" style="position:sticky;top:0;background:#fff;z-index:1;"></tr></thead>
+                        <tbody id="importDevBody2"></tbody>
+                    </table>
+                </div>
+                <p style="font-size:.68rem;color:#aaa;margin-top:8px;">Rows with no device name will be skipped.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('importDevicesModal')">Cancel</button>
+            <button type="button" id="importDevPreviewBtn" class="btn-submit" onclick="previewDeviceImport()" style="display:none;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15" height="15"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Preview
+            </button>
+            <form asp-action="ImportDevices" asp-controller="Devices" method="post" id="importDevSubmitForm" style="display:none;">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="rows_json" id="importDevRowsJson">
+                <button type="submit" id="importDevSubmitBtn" class="btn-submit">Import</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* ══ IMPORT LOANS MODAL ══ *@
+<div class="modal-overlay" id="importLoansModal">
+    <div class="modal import-modal">
+        <div class="modal-header">
+            <h3>Import Loans from CSV</h3>
+            <button class="modal-close" onclick="closeModal('importLoansModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body" id="importLoansBody">
+            <div id="importLoanStep1">
+                <p style="font-size:.78rem;color:#666;margin-bottom:14px;">Upload a CSV file. The <strong>device_name</strong> and <strong>borrower_name</strong> columns are required.</p>
+                <div style="background:#f8f9fe;border:1.5px solid #eef0f6;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:.7rem;color:#555;line-height:1.9;">
+                    <strong style="color:#333;">Required:</strong> device_name, borrower_name<br>
+                    <strong style="color:#333;">Optional:</strong> department, date_borrowed, expected_return
+                </div>
+                <div style="margin-bottom:14px;">
+                    <button type="button" onclick="downloadLoanTemplate()" style="display:inline-flex;align-items:center;gap:6px;font-size:.72rem;color:#25671E;padding:7px 14px;border:1.5px solid #c8e6c0;border-radius:8px;background:#f4fbf2;cursor:pointer;font-family:inherit;font-weight:600;">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download CSV Template
+                    </button>
+                </div>
+                <label style="display:block;font-size:.7rem;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Select CSV File</label>
+                <input type="file" id="importLoanFileInput" accept=".csv,text/csv" style="width:100%;padding:10px;border:1.5px solid #dde2ef;border-radius:8px;font-size:.78rem;font-family:inherit;background:#fff;cursor:pointer;">
+                <p id="importLoanFileError" style="color:#c81e1e;font-size:.72rem;margin-top:6px;display:none;"></p>
+            </div>
+            <div id="importLoanStep2" style="display:none;">
+                <div id="importLoanSummaryBar" style="display:flex;gap:10px;margin-bottom:14px;"></div>
+                <div style="overflow-x:auto;max-height:300px;overflow-y:auto;border:1.5px solid #eef0f6;border-radius:10px;">
+                    <table style="width:100%;border-collapse:collapse;min-width:400px;">
+                        <thead><tr id="importLoanHead" style="position:sticky;top:0;background:#fff;z-index:1;"></tr></thead>
+                        <tbody id="importLoanBody2"></tbody>
+                    </table>
+                </div>
+                <p style="font-size:.68rem;color:#aaa;margin-top:8px;">Rows missing device_name or borrower_name will be skipped. Device must already exist in inventory.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('importLoansModal')">Cancel</button>
+            <button type="button" id="importLoanPreviewBtn" class="btn-submit" onclick="previewLoanImport()" style="display:none;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15" height="15"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Preview
+            </button>
+            <form asp-action="ImportLoans" asp-controller="Devices" method="post" id="importLoanSubmitForm" style="display:none;">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="rows_json" id="importLoanRowsJson">
+                <button type="submit" id="importLoanSubmitBtn" class="btn-submit">Import</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* ══ DETAIL DRAWER ══ *@
+<div id="detailDrawerOverlay" onclick="closeDetailDrawer()"></div>
+<div id="detailDrawer">
+    <div class="drawer-header">
+        <div>
+            <div style="font-size:1.1rem;font-weight:700;color:#111;" id="drawerTitle">Device Details</div>
+            <div style="font-size:.72rem;color:#999;margin-top:2px;" id="drawerSub"></div>
+        </div>
+        <button onclick="closeDetailDrawer()" style="background:none;border:none;cursor:pointer;color:#888;padding:6px;border-radius:8px;display:inline-flex;">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="20" height="20"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+    </div>
+    <div class="drawer-body">
+        <div class="drawer-section-label">Device Identity</div>
+        <div class="drawer-grid">
+            <div class="drawer-cell"><div class="drawer-cell-label">Computer Name</div><div class="drawer-cell-value" id="drComputerName">—</div></div>
+            <div class="drawer-cell"><div class="drawer-cell-label">Department</div><div class="drawer-cell-value" id="drDept">—</div></div>
+            <div class="drawer-cell"><div class="drawer-cell-label">Model</div><div class="drawer-cell-value" id="drModel">—</div></div>
+            <div class="drawer-cell"><div class="drawer-cell-label">Serial Number</div><div class="drawer-cell-value" id="drSerial">—</div></div>
+        </div>
+        <div class="drawer-section-label">Software</div>
+        <div class="drawer-grid">
+            <div class="drawer-cell"><div class="drawer-cell-label">OS Name</div><div class="drawer-cell-value" id="drOs">—</div></div>
+            <div class="drawer-cell"><div class="drawer-cell-label">Release ID</div><div class="drawer-cell-value" id="drRelease">—</div></div>
+        </div>
+        <div class="drawer-section-label">Assignment</div>
+        <div class="drawer-grid">
+            <div class="drawer-cell"><div class="drawer-cell-label">PIC</div><div class="drawer-cell-value" id="drPic">—</div></div>
+            <div class="drawer-cell"><div class="drawer-cell-label">Loaner Created</div><div class="drawer-cell-value" id="drCreated">—</div></div>
+            <div class="drawer-cell"><div class="drawer-cell-label">Borrower</div><div class="drawer-cell-value" style="color:#1a56db;" id="drBorrower">—</div></div>
+            <div class="drawer-cell"><div class="drawer-cell-label">BU</div><div class="drawer-cell-value" id="drBu">—</div></div>
+        </div>
+        <div class="drawer-section-label">Dates & Status</div>
+        <div class="drawer-grid">
+            <div class="drawer-cell"><div class="drawer-cell-label">Deployment Date</div><div class="drawer-cell-value" id="drDeployDate">—</div></div>
+            <div class="drawer-cell"><div class="drawer-cell-label">Date to be Returned</div><div class="drawer-cell-value" style="color:#e65100;" id="drReturnDate">—</div></div>
+            <div class="drawer-cell"><div class="drawer-cell-label">Status</div><div class="drawer-cell-value" id="drStatus">—</div></div>
+            <div class="drawer-cell"><div class="drawer-cell-label">Current State</div><div class="drawer-cell-value" id="drCurrentState">—</div></div>
+        </div>
+    </div>
+</div>
+
+@* ══ TOAST ══ *@
+<div class="toast" id="toastNotif">
+    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" id="toastIcon"></svg>
+    <span id="toastMsg"></span>
+</div>
+
+@* ══ ROW DETAIL MODAL ══ *@
+<div class="modal-overlay" id="rowDetailModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div>
+                <h3 id="rdmTitle">Details</h3>
+                <div class="modal-header-sub" id="rdmSub"></div>
+            </div>
+            <button class="modal-close" onclick="closeModal('rowDetailModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px;" id="rdmGrid"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('rowDetailModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+
+/* ── Row detail modal (borrowed tab) ── */
+function openRowDetailModal(row) {
+    if (event.target.closest('.action-wrap')) return;
+
+    const rawJson = row.dataset.detail
+        .replace(/&amp;/g,  '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g,  "'")
+        .replace(/&lt;/g,   '<')
+        .replace(/&gt;/g,   '>');
+
+    const d = JSON.parse(rawJson);
+
+    document.getElementById('rdmTitle').textContent = d.device_name || 'Details';
+    document.getElementById('rdmSub').textContent   = [d.model, d.serial_number].filter(Boolean).join(' · ');
+
+    const fields = [
+        ['Device',           d.device_name],
+        ['Model',            d.model],
+        ['Serial Number',    d.serial_number],
+        ['Borrower',         d.borrower_name],
+        ['Department',       d.department],
+        ['Date Borrowed',    d.date_borrowed],
+        ['Expected Return',  d.expected_return],
+        ['Status',           d.status],
+    ];
+
+    document.getElementById('rdmGrid').innerHTML = fields.map(([label, val]) => `
+        <div style="background:#f8f9fe;border:1.5px solid #eef0f6;border-radius:10px;padding:13px 16px;">
+            <div style="font-size:.6rem;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">${label}</div>
+            <div style="font-size:.8rem;font-weight:600;color:${label==='Status'&&d.status==='Overdue'?'#e65100':label==='Borrower'?'#1a56db':'#222'};">${val || '—'}</div>
+        </div>`
+    ).join('');
+
+    openModal('rowDetailModal');
+}
+
+/* ── Dropdown ── */
+function toggleDropdown(id, e) {
+    e.stopPropagation();
+    const menu = document.getElementById(id);
+    const isOpen = menu.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        menu.style.right  = (window.innerWidth - rect.right) + 'px';
+        const spaceB = window.innerHeight - rect.bottom;
+        if (spaceB < 160) { menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px'; menu.style.top = 'auto'; }
+        else              { menu.style.top    = (rect.bottom + 4) + 'px'; menu.style.bottom = 'auto'; }
+        menu.classList.add('open');
+    }
+}
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-menu.open').forEach(m => m.classList.remove('open'));
+}
+document.addEventListener('click', closeAllDropdowns);
+
+/* ── Modal helpers ── */
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', function(e) { if (e.target === this) closeModal(this.id); });
+});
+
+/* ── Borrow modal ── */
+function openBorrowModal(deviceId, deviceName, model) {
+    document.getElementById('borrowDeviceId').value    = deviceId;
+    document.getElementById('borrowModalSub').textContent = deviceName + (model ? ' · ' + model : '');
+    document.getElementById('borrowDateInput').value   = new Date().toISOString().split('T')[0];
+    document.getElementById('borrowerNameInput').value = '';
+    openModal('borrowModal');
+    setTimeout(() => document.getElementById('borrowerNameInput').focus(), 200);
+}
+
+/* ── Add device modal ── */
+function openAddDeviceModal() { openModal('addDeviceModal'); }
+
+/* ── Edit device modal ── */
+function openEditDeviceModal(id, name, serial, model, dept, osName, releaseId, pic) {
+    document.getElementById('editDeviceId').value     = id;
+    document.getElementById('editDeviceName').value   = name;
+    document.getElementById('editSerialNumber').value = serial;
+    document.getElementById('editModel').value        = model;
+    document.getElementById('editDeviceDept').value   = dept || '';
+    document.getElementById('editOsName').value       = osName || '';
+    document.getElementById('editReleaseId').value    = releaseId || '';
+    document.getElementById('editPic').value          = pic || '';
+    openModal('editDeviceModal');
+}
+
+/* ── Delete device modal ── */
+function openDeleteDeviceModal(id, name) {
+    document.getElementById('deleteDeviceId').value = id;
+    document.getElementById('deleteDeviceMsg').textContent = 'You are about to delete "' + name + '". This cannot be undone.';
+    openModal('deleteDeviceModal');
+}
+
+/* ── Edit loan modal ── */
+function openEditLoanModal(id, borrower, dept, dateBorrowed, expectedReturn, status, dateReturned) {
+    document.getElementById('editLoanId').value           = id;
+    document.getElementById('editLoanBorrower').value     = borrower;
+    document.getElementById('editLoanDept').value         = dept;
+    document.getElementById('editLoanDateBorrowed').value = dateBorrowed;
+    document.getElementById('editLoanExpected').value     = expectedReturn;
+    document.getElementById('editLoanStatus').value       = status;
+    document.getElementById('editLoanDateReturned').value = dateReturned || '';
+    openModal('editLoanModal');
+}
+
+/* ── Add & Borrow modal ── */
+function openAddBorrowModal() {
+    document.getElementById('addBorrowDateInput').value = new Date().toISOString().split('T')[0];
+    openModal('addBorrowModal');
+}
+/* ── Delete loan modal ── */
+function openDeleteLoanModal(id, deviceName) {
+    document.getElementById('deleteLoanId').value = id;
+    document.getElementById('deleteLoanMsg').textContent = 'You are about to delete the loan record for "' + deviceName + '". This cannot be undone.';
+    openModal('deleteLoanModal');
+}
+
+/* ── Detail drawer ── */
+function openDetailDrawer(data) {
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '—'; };
+    set('drComputerName', data.device_name);
+    set('drDept',         data.department);
+    set('drModel',        data.model);
+    set('drSerial',       data.serial_number);
+    set('drOs',           data.os_name);
+    set('drRelease',      data.release_id);
+    set('drPic',          data.pic);
+    set('drCreated',      data.created_at ? data.created_at.substring(0, 10) : '');
+    set('drBorrower',     data.borrower_name);
+    set('drBu',           data.bu);
+    set('drDeployDate',   data.date_borrowed);
+    set('drReturnDate',   data.exp_return);
+    const isLoaned = !!data.borrower_name;
+    const statusEl = document.getElementById('drStatus');
+    const stateEl  = document.getElementById('drCurrentState');
+    if (statusEl) { statusEl.textContent = isLoaned ? 'On Loan' : 'Available'; statusEl.style.color = isLoaned ? '#e65100' : '#0e9a4a'; }
+    if (stateEl)  { stateEl.textContent  = isLoaned ? 'In Use' : 'In Stock'; }
+    document.getElementById('drawerTitle').textContent = data.device_name || 'Device Details';
+    document.getElementById('drawerSub').textContent   = [data.model, data.serial_number].filter(Boolean).join(' · ');
+    document.getElementById('detailDrawerOverlay').style.display = 'block';
+    document.getElementById('detailDrawer').style.transform = 'translateX(0)';
+}
+function closeDetailDrawer() {
+    document.getElementById('detailDrawer').style.transform = 'translateX(100%)';
+    document.getElementById('detailDrawerOverlay').style.display = 'none';
+}
+
+/* ── Inventory pagination + search ── */
+let currentPage = 1;
+const PAGE_SIZE = 50;
+
+function renderTable() {
+    const query   = document.getElementById('devSearchInput').value.toLowerCase();
+    const allRows = Array.from(document.querySelectorAll('#devTable tbody tr:not(.empty-row)'));
+    const filtered = allRows.filter(row => { const m = row.textContent.toLowerCase().includes(query); row.style.display = 'none'; return m; });
+    document.querySelectorAll('#devTable tbody tr.empty-row').forEach(r => r.remove());
+    if (filtered.length === 0) {
+        const tr = document.createElement('tr'); tr.className = 'empty-row';
+        tr.innerHTML = '<td colspan="9">No devices match your search.</td>';
+        document.querySelector('#devTable tbody').appendChild(tr);
+        document.getElementById('paginationBar').style.display = 'none'; return;
+    }
+    const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+    if (currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * PAGE_SIZE, end = Math.min(start + PAGE_SIZE, filtered.length);
+    filtered.forEach((row, i) => { row.style.display = (i >= start && i < end) ? '' : 'none'; });
+    document.getElementById('paginationInfo').textContent = `Showing ${start+1}–${end} of ${filtered.length} device${filtered.length!==1?'s':''}`;
+    document.getElementById('paginationBar').style.display = 'flex';
+    buildPagination('paginationBtns', currentPage, totalPages, p => { currentPage = p; renderTable(); });
+}
+
+/* ── Loan table search + filter + pagination ── */
+let currentLoanFilter = 'all', currentLoanPage = 1;
+
+function setLoanFilter(filter) {
+    currentLoanFilter = filter;
+    ['all','overdue'].forEach(f => document.getElementById('loanFilter' + f.charAt(0).toUpperCase() + f.slice(1))?.classList.toggle('active', f === filter));
+    currentLoanPage = 1; renderLoanTable();
+}
+function liveSearch() { currentLoanPage = 1; renderLoanTable(); }
+function renderLoanTable() {
+    const query   = document.getElementById('loanSearchInput').value.toLowerCase();
+    const allRows = Array.from(document.querySelectorAll('#loanTable tbody tr:not(.empty-row)'));
+    const filtered = allRows.filter(row => {
+        const sd = row.dataset.search || '';
+        const ok = (!query || sd.includes(query)) && (currentLoanFilter === 'all' || sd.includes(currentLoanFilter));
+        row.style.display = 'none'; return ok;
+    });
+    document.querySelectorAll('#loanTable tbody tr.empty-row').forEach(r => r.remove());
+    if (filtered.length === 0) {
+        const tr = document.createElement('tr'); tr.className = 'empty-row';
+        tr.innerHTML = '<td colspan="9">No borrowed devices match your search.</td>';
+        document.querySelector('#loanTable tbody').appendChild(tr);
+        document.getElementById('loanPaginationBar').style.display = 'none'; return;
+    }
+    const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+    if (currentLoanPage > totalPages) currentLoanPage = totalPages;
+    const start = (currentLoanPage - 1) * PAGE_SIZE, end = Math.min(start + PAGE_SIZE, filtered.length);
+    filtered.forEach((row, i) => { row.style.display = (i >= start && i < end) ? '' : 'none'; });
+    document.getElementById('loanPaginationInfo').textContent = `Showing ${start+1}–${end} of ${filtered.length} record${filtered.length!==1?'s':''}`;
+    document.getElementById('loanPaginationBar').style.display = 'flex';
+    buildPagination('loanPaginationBtns', currentLoanPage, totalPages, p => { currentLoanPage = p; renderLoanTable(); });
+}
+
+function buildPagination(containerId, current, total, onPage) {
+    const btns = document.getElementById(containerId); btns.innerHTML = '';
+    const prev = document.createElement('button'); prev.className = 'page-btn'; prev.disabled = current === 1;
+    prev.innerHTML = `<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>`;
+    prev.onclick = () => onPage(current - 1); btns.appendChild(prev);
+    getPageRange(current, total).forEach(p => {
+        const btn = document.createElement('button'); btn.className = 'page-btn' + (p === current ? ' active' : '');
+        if (p === '...') { btn.disabled = true; btn.textContent = '…'; }
+        else { btn.textContent = p; btn.onclick = () => onPage(p); }
+        btns.appendChild(btn);
+    });
+    const next = document.createElement('button'); next.className = 'page-btn'; next.disabled = current === total;
+    next.innerHTML = `<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>`;
+    next.onclick = () => onPage(current + 1); btns.appendChild(next);
+}
+function getPageRange(current, total) {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const pages = [1];
+    if (current > 3) pages.push('...');
+    for (let p = Math.max(2, current-1); p <= Math.min(total-1, current+1); p++) pages.push(p);
+    if (current < total - 2) pages.push('...');
+    pages.push(total); return pages;
+}
+
+/* ── Export ── */
+function exportDevicesCSV() {
+    const rows = [['Computer Name','Borrower','Department','Model','Serial Number','Loaner Created','Date to Return','Status']];
+    document.querySelectorAll('#devTable tbody tr:not(.empty-row)').forEach(tr => {
+        if (tr.style.display === 'none') return;
+        const c = tr.querySelectorAll('td');
+        if (c.length < 8) return;
+        rows.push([
+            csvCell(c[0].textContent.trim()),
+            csvCell(c[1].textContent.trim()),
+            csvCell(c[2].textContent.trim()),
+            csvCell(c[3].textContent.trim()),
+            csvCell(c[4].textContent.trim()),
+            csvCell(c[5].textContent.trim()),
+            csvCell(c[6].textContent.trim()),
+            csvCell(c[7].textContent.trim()),
+        ]);
+    });
+    triggerCSVDownload(rows, 'devices_export.csv');
+}
+
+function exportLoansCSV() {
+    const rows = [['Device Name','Model','Serial Number','Borrower','Department','Date Borrowed','Expected Return','Status']];
+    document.querySelectorAll('#loanTable tbody tr:not(.empty-row)').forEach(tr => {
+        if (tr.style.display === 'none') return;
+        const c = tr.querySelectorAll('td');
+        if (c.length < 8) return;
+        rows.push([0,1,2,3,4,5,6,7].map(i => csvCell(c[i].textContent.trim())));
+    });
+    triggerCSVDownload(rows, 'loans_export.csv');
+}
+function csvCell(v) {
+    const s = String(v || '');
+    return (s.includes(',') || s.includes('"') || s.includes('\n')) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+function triggerCSVDownload(rows, filename) {
+    const csv  = rows.map(r => r.join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+}
+
+/* ── Import ── */
+let importDevRows = [];
+function openImportDevicesModal() {
+    importDevRows = [];
+    document.getElementById('importDevStep1').style.display = '';
+    document.getElementById('importDevStep2').style.display = 'none';
+    document.getElementById('importDevPreviewBtn').style.display = 'none';
+    document.getElementById('importDevSubmitForm').style.display = 'none';
+    document.getElementById('importDevFileInput').value = '';
+    document.getElementById('importDevFileError').style.display = 'none';
+    openModal('importDevicesModal');
+}
+document.addEventListener('DOMContentLoaded', () => {
+    const fi = document.getElementById('importDevFileInput');
+    if (fi) fi.addEventListener('change', function() {
+        const errEl = document.getElementById('importDevFileError');
+        const prevBtn = document.getElementById('importDevPreviewBtn');
+        errEl.style.display = 'none'; prevBtn.style.display = 'none';
+        if (!this.files?.[0]) return;
+        if (!this.files[0].name.toLowerCase().endsWith('.csv')) {
+            errEl.textContent = 'Please select a .csv file.'; errEl.style.display = 'block'; return;
+        }
+        prevBtn.style.display = '';
+    });
+    renderTable();
+    renderLoanTable();
+    @if (Model.QrBorrowDevice != null)
+    {
+        <text>
+        openBorrowModal(@Model.QrBorrowDevice.Id,
+            '@Html.Raw(Model.QrBorrowDevice.DeviceName.Replace("'","\\'"))',
+            '@Html.Raw(Model.QrBorrowDevice.Model.Replace("'","\\'"))');
+        </text>
+    }
+});
+function previewDeviceImport() {
+    const file = document.getElementById('importDevFileInput').files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const parsed = parseCSV(e.target.result);
+        if (parsed.length < 2) {
+            document.getElementById('importDevFileError').textContent = 'CSV appears empty or has no data rows.';
+            document.getElementById('importDevFileError').style.display = 'block'; return;
+        }
+        const headers  = parsed[0].map(h => h.trim().toLowerCase().replace(/\s+/g,'_'));
+        const dataRows = parsed.slice(1);
+        importDevRows  = []; let skipped = 0;
+        dataRows.forEach(row => {
+            const obj = {}; headers.forEach((h, i) => { obj[h] = (row[i] || '').trim(); });
+            if (!obj.device_name) { skipped++; return; }
+            importDevRows.push(obj);
+        });
+        const ready = importDevRows.length, total = dataRows.length;
+        document.getElementById('importDevStep1').style.display = 'none';
+        document.getElementById('importDevStep2').style.display = '';
+        document.getElementById('importDevPreviewBtn').style.display = 'none';
+        document.getElementById('importDevSubmitForm').style.display = '';
+        document.getElementById('importDevRowsJson').value = JSON.stringify(importDevRows);
+        document.getElementById('importDevSubmitBtn').textContent = `Import ${ready} Device${ready!==1?'s':''}`;
+        document.getElementById('importDevSummaryBar').innerHTML =
+            `<div style="flex:1;background:#f4fbf2;border:1.5px solid #c8e6c0;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:1.1rem;font-weight:600;color:#0e9a4a;">${ready}</div><div style="font-size:.65rem;color:#555;margin-top:2px;">Ready to import</div></div>` +
+            (skipped ? `<div style="flex:1;background:#fde8e8;border:1.5px solid #f5c2c2;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:1.1rem;font-weight:600;color:#c81e1e;">${skipped}</div><div style="font-size:.65rem;color:#555;margin-top:2px;">Skipped</div></div>` : '') +
+            `<div style="flex:1;background:#f8f9fe;border:1.5px solid #eef0f6;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:1.1rem;font-weight:600;color:#333;">${total}</div><div style="font-size:.65rem;color:#555;margin-top:2px;">Total rows</div></div>`;
+        const cols = ['device_name','department','model','serial_number','os_name','release_id','pic'],
+      clabels = ['Device Name','Department','Model','Serial Number','OS Name','Release ID','PIC'];
+        document.getElementById('importDevHead').innerHTML =
+            clabels.map(l => `<th style="text-align:left;padding:10px 14px;font-size:.63rem;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.5px solid #eef0f6;white-space:nowrap;">${l}</th>`).join('') +
+            `<th style="border-bottom:1.5px solid #eef0f6;"></th>`;
+        document.getElementById('importDevBody2').innerHTML =
+            importDevRows.slice(0,50).map(r =>
+                `<tr style="border-bottom:1px solid #f2f4fb;">` +
+                cols.map(c => `<td style="padding:10px 14px;font-size:.73rem;color:#333;white-space:nowrap;">${r[c]||'<span style="color:#ccc;">—</span>'}</td>`).join('') +
+                `<td style="padding:10px 14px;"><span style="background:#e3fbec;color:#0e9a4a;padding:3px 10px;border-radius:20px;font-size:.6rem;font-weight:700;">OK</span></td></tr>`
+            ).join('') +
+            (importDevRows.length > 50 ? `<tr><td colspan="8" style="text-align:center;padding:10px;font-size:.7rem;color:#aaa;">… and ${importDevRows.length-50} more rows</td></tr>` : '');
+    };
+    reader.readAsText(file);
+}
+function downloadDeviceTemplate() {
+    const csv = 'device_name,department,model,serial_number,os_name,release_id,pic\r\nDell Laptop,Accounting,Latitude E7450,SN-00123,Windows 11 Pro,22H2,Maria Santos\r\nHP Monitor,Engineering,EliteDisplay E243,SN-00456,Windows 10 Pro,21H2,Juan Dela Cruz\r\n';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = url; a.download = 'device_import_template.csv'; a.click(); URL.revokeObjectURL(url);
+}
+
+/* ── Import Loans ── */
+let importLoanRows = [];
+
+function openImportLoansModal() {
+    importLoanRows = [];
+    document.getElementById('importLoanStep1').style.display = '';
+    document.getElementById('importLoanStep2').style.display = 'none';
+    document.getElementById('importLoanPreviewBtn').style.display = 'none';
+    document.getElementById('importLoanSubmitForm').style.display = 'none';
+    document.getElementById('importLoanFileInput').value = '';
+    document.getElementById('importLoanFileError').style.display = 'none';
+    openModal('importLoansModal');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const lfi = document.getElementById('importLoanFileInput');
+    if (lfi) lfi.addEventListener('change', function () {
+        const errEl   = document.getElementById('importLoanFileError');
+        const prevBtn = document.getElementById('importLoanPreviewBtn');
+        errEl.style.display = 'none'; prevBtn.style.display = 'none';
+        if (!this.files?.[0]) return;
+        if (!this.files[0].name.toLowerCase().endsWith('.csv')) {
+            errEl.textContent = 'Please select a .csv file.';
+            errEl.style.display = 'block'; return;
+        }
+        prevBtn.style.display = '';
+    });
+});
+
+function previewLoanImport() {
+    const file = document.getElementById('importLoanFileInput').files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        const parsed = parseCSV(e.target.result);
+        if (parsed.length < 2) {
+            document.getElementById('importLoanFileError').textContent = 'CSV appears empty or has no data rows.';
+            document.getElementById('importLoanFileError').style.display = 'block'; return;
+        }
+        const headers  = parsed[0].map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+        const dataRows = parsed.slice(1);
+        importLoanRows = []; let skipped = 0;
+        dataRows.forEach(row => {
+            const obj = {}; headers.forEach((h, i) => { obj[h] = (row[i] || '').trim(); });
+            if (!obj.device_name || !obj.borrower_name) { skipped++; return; }
+            importLoanRows.push(obj);
+        });
+        const ready = importLoanRows.length, total = dataRows.length;
+        document.getElementById('importLoanStep1').style.display = 'none';
+        document.getElementById('importLoanStep2').style.display = '';
+        document.getElementById('importLoanPreviewBtn').style.display = 'none';
+        document.getElementById('importLoanSubmitForm').style.display = '';
+        document.getElementById('importLoanRowsJson').value = JSON.stringify(importLoanRows);
+        document.getElementById('importLoanSubmitBtn').textContent = `Import ${ready} Loan${ready !== 1 ? 's' : ''}`;
+
+        document.getElementById('importLoanSummaryBar').innerHTML =
+            `<div style="flex:1;background:#f4fbf2;border:1.5px solid #c8e6c0;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:1.1rem;font-weight:600;color:#0e9a4a;">${ready}</div><div style="font-size:.65rem;color:#555;margin-top:2px;">Ready to import</div></div>` +
+            (skipped ? `<div style="flex:1;background:#fde8e8;border:1.5px solid #f5c2c2;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:1.1rem;font-weight:600;color:#c81e1e;">${skipped}</div><div style="font-size:.65rem;color:#555;margin-top:2px;">Skipped</div></div>` : '') +
+            `<div style="flex:1;background:#f8f9fe;border:1.5px solid #eef0f6;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:1.1rem;font-weight:600;color:#333;">${total}</div><div style="font-size:.65rem;color:#555;margin-top:2px;">Total rows</div></div>`;
+
+        const cols    = ['device_name', 'borrower_name', 'department', 'date_borrowed', 'expected_return'];
+        const clabels = ['Device Name', 'Borrower', 'Department', 'Date Borrowed', 'Expected Return'];
+        document.getElementById('importLoanHead').innerHTML =
+            clabels.map(l => `<th style="text-align:left;padding:10px 14px;font-size:.63rem;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.5px solid #eef0f6;white-space:nowrap;">${l}</th>`).join('') +
+            `<th style="border-bottom:1.5px solid #eef0f6;"></th>`;
+        document.getElementById('importLoanBody2').innerHTML =
+            importLoanRows.slice(0, 50).map(r =>
+                `<tr style="border-bottom:1px solid #f2f4fb;">` +
+                cols.map(c => `<td style="padding:10px 14px;font-size:.73rem;color:#333;white-space:nowrap;">${r[c] || '<span style="color:#ccc;">—</span>'}</td>`).join('') +
+                `<td style="padding:10px 14px;"><span style="background:#e3fbec;color:#0e9a4a;padding:3px 10px;border-radius:20px;font-size:.6rem;font-weight:700;">OK</span></td></tr>`
+            ).join('') +
+            (importLoanRows.length > 50 ? `<tr><td colspan="6" style="text-align:center;padding:10px;font-size:.7rem;color:#aaa;">… and ${importLoanRows.length - 50} more rows</td></tr>` : '');
+    };
+    reader.readAsText(file);
+}
+
+function downloadLoanTemplate() {
+    const csv = 'device_name,borrower_name,department,date_borrowed,expected_return\r\nDell Laptop,John Smith,Engineering,2025-06-01,2025-06-30\r\nHP Monitor,Maria Santos,Accounting,2025-06-05,\r\n';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'loan_import_template.csv'; a.click();
+    URL.revokeObjectURL(url);
+}
+
+function parseCSV(text) {
+    const rows = []; let cur = [], field = '', inQ = false;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (inQ) { if (c==='"') { if (text[i+1]==='"') { field+='"'; i++; } else inQ=false; } else field+=c; }
+        else {
+            if (c==='"') inQ=true;
+            else if (c===',') { cur.push(field); field=''; }
+            else if (c==='\n'||c==='\r') {
+                if (c==='\r'&&text[i+1]==='\n') i++;
+                cur.push(field); field='';
+                if (cur.some(v=>v.trim())) rows.push(cur); cur=[];
+            } else field+=c;
+        }
+    }
+    if (field||cur.length) { cur.push(field); if (cur.some(v=>v.trim())) rows.push(cur); }
+    return rows;
+}
+
+/* ── Toast ── */
+@if (!string.IsNullOrEmpty(Model.ToastMessage))
+{
+    <text>
+    (function() {
+        const toast = document.getElementById('toastNotif');
+        const type  = '@Model.ToastType';
+        toast.classList.add('toast-' + type);
+        document.getElementById('toastMsg').textContent  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ToastMessage));
+        document.getElementById('toastIcon').innerHTML   = type === 'success'
+            ? '<path d="M20 6 9 17l-5-5"/>'
+            : '<path d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>';
+        setTimeout(() => toast.classList.add('show'), 100);
+        setTimeout(() => toast.classList.remove('show'), 3500);
+    })();
+    </text>
+}
+</script>
+}

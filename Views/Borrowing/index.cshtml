@@ -1,0 +1,1570 @@
+@* ============================================================
+   File: Views/Borrowing/Index.cshtml
+   Purpose: Main borrowing page with 3 tabs: Borrowed, Returned, Deployed.
+            Converted from borrowing.php — preserves all UI and modals.
+   ============================================================ *@
+
+@model ITInventorySystem.Models.BorrowingViewModel
+
+@{
+    ViewData["Title"] = "Borrowing List";
+    // Serialize items to JSON for JavaScript modal functions
+    // Replaces PHP: json_encode($js_items) inline in onclick attributes
+}
+
+<style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Main ── */
+    .main { flex: 1; padding: 24px 44px; overflow: hidden; display: flex; flex-direction: column; min-height: 0; height: 100vh; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-shrink: 0; border-bottom: 2px solid #e4e7f0; padding-bottom: 0; }
+    .page-header h2 { font-size: 1.65rem; font-weight: 700; color: #111; padding-bottom: 12px; }
+    .tabs-bar { display: flex; align-items: center; }
+    .tab-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px; font-size: .75rem; font-weight: 600; font-family: 'Segoe UI', Arial, sans-serif; color: #888; background: none; border: none; border-bottom: 2.5px solid transparent; margin-bottom: -2px; cursor: pointer; text-decoration: none; white-space: nowrap; transition: color .18s, border-color .18s; }
+    .tab-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .tab-btn:hover { color: #25671E; }
+    .tab-btn.active { color: #25671E; border-bottom-color: #25671E; }
+    .tab-count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 18px; padding: 0 6px; border-radius: 9px; font-size: .62rem; font-weight: 700; background: #eef0f6; color: #777; transition: background .18s, color .18s; }
+    .tab-btn.active .tab-count { background: #d6edcf; color: #1d5618; }
+
+    /* ── Toolbar ── */
+    .toolbar { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-shrink: 0; }
+    .search-wrap { flex: 1; position: relative; }
+    .search-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #999; pointer-events: none; }
+    .search-wrap input { width: 100%; padding: 11px 14px 11px 42px; border: 1.5px solid #dde2ef; border-radius: 10px; font-size: .75rem; background: #fff; color: #222; outline: none; transition: border-color .18s; font-family: 'Segoe UI', Arial, sans-serif; }
+    .search-wrap input:focus { border-color: #25671E; }
+    .btn-new { display: inline-flex; align-items: center; gap: 7px; background: #25671E; color: #fff; border: none; padding: 11px 22px; border-radius: 10px; font-size: .75rem; font-weight: 600; font-family: 'Segoe UI', Arial, sans-serif; cursor: pointer; white-space: nowrap; transition: background .18s; }
+    .btn-new:hover { background: #48A111; }
+    .btn-export, .btn-import-open { display: inline-flex; align-items: center; gap: 7px; background: #fff; color: #444; border: 1.5px solid #dde2ef; padding: 11px 18px; border-radius: 10px; font-size: .75rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .18s, border-color .18s; }
+    .btn-export:hover, .btn-import-open:hover { background: #f4f6fb; border-color: #c8cce0; }
+
+    /* ── Table Card ── */
+    .table-card { background: #fff; border-radius: 14px; box-shadow: 0 1px 6px rgba(0,0,0,.07); display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+    .table-scroll { overflow: auto; flex: 1; }
+    table { width: 100%; border-collapse: collapse; min-width: 700px; }
+    thead th { text-align: left; padding: 14px 18px; font-size: .65rem; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1.5px solid #eef0f6; background: #fff; position: sticky; top: 0; z-index: 1; }
+    tbody tr { border-bottom: 1px solid #f2f4fb; transition: background .14s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f7f9ff; }
+    td { padding: 16px 18px; font-size: .75rem; vertical-align: top; }
+    .borrower-name { font-weight: 600; color: #111; }
+    .dept { color: #777; font-size: .75rem; }
+    .items-list { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+    .item-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .item-text { font-size: .75rem; color: #333; }
+    .item-text.struck { text-decoration: line-through; color: #bbb; }
+    .item-qty { color: #999; font-size: .75rem; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 4px 13px; border-radius: 20px; font-size: .6rem; font-weight: 600; letter-spacing: .02em; }
+    .badge-Borrowed  { background: #e8f0fe; color: #1a56db; }
+    .badge-Returned  { background: #e3fbec; color: #0e9a4a; }
+    .badge-Overdue   { background: #fff3e0; color: #e65100; }
+    .badge-Deployed  { background: #ede9fe; color: #6d28d9; }
+
+    /* ── 3-dot dropdown ── */
+    .action-wrap { position: relative; display: inline-block; }
+    .btn-dots { background: none; border: none; cursor: pointer; padding: 6px 8px; border-radius: 6px; color: #666; display: inline-flex; align-items: center; justify-content: center; transition: background .15s, color .15s; }
+    .btn-dots:hover { background: #eef0fb; color: #333; }
+    .btn-dots svg { width: 18px; height: 18px; }
+    .dropdown-menu { display: none; position: fixed; background: #fff; border: 1.5px solid #eef0f6; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); min-width: 170px; z-index: 200; overflow: hidden; animation: fadeIn .15s ease; }
+    .dropdown-menu.open { display: block; }
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+    .dropdown-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; font-size: .65rem; font-weight: 500; color: #333; cursor: pointer; border: none; background: none; width: 100%; text-align: left; transition: background .13s; font-family: 'Segoe UI', Arial, sans-serif; }
+    .dropdown-item:hover { background: #f4f6fb; }
+    .dropdown-item svg { width: 15px; height: 15px; flex-shrink: 0; color: #666; }
+    .dropdown-item.item-return { color: #1a56db; }
+    .dropdown-item.item-return svg { color: #1a56db; }
+    .dropdown-item.item-edit { color: #25671E; }
+    .dropdown-item.item-edit svg { color: #25671E; }
+    .dropdown-item.item-delete { color: #c81e1e; }
+    .dropdown-item.item-delete svg { color: #c81e1e; }
+    .dropdown-divider { height: 1px; background: #eef0f6; margin: 4px 0; }
+
+    /* ── Pagination ── */
+    .pagination-bar { display: none; align-items: center; justify-content: space-between; padding: 12px 18px; border-top: 1px solid #eef0f6; flex-shrink: 0; }
+    .pagination-info { font-size: .72rem; color: #888; }
+    .pagination-btns { display: flex; gap: 4px; }
+    .page-btn { min-width: 32px; height: 32px; padding: 0 8px; border-radius: 7px; border: 1.5px solid #dde2ef; background: #fff; color: #555; font-size: .72rem; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; display: inline-flex; align-items: center; justify-content: center; }
+    .page-btn:hover:not(:disabled) { background: #f4f6fb; }
+    .page-btn.active { background: #25671E; color: #fff; border-color: #25671E; }
+    .page-btn:disabled { opacity: .4; cursor: default; }
+    .page-btn svg { width: 14px; height: 14px; }
+    .empty-row td { text-align: center; color: #aaa; padding: 40px; font-size: .8rem; }
+
+    /* ── Modal ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #fff; border-radius: 16px; width: 560px; max-width: 96vw; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.18); animation: slideUp .22s ease; }
+    .modal-sm { width: 460px; }
+    @@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 24px 32px 16px; border-bottom: 1.5px solid #eef0f6; }
+    .modal-header h3 { font-size: 1rem; font-weight: 700; color: #111; }
+    .modal-close { background: none; border: none; cursor: pointer; color: #aaa; padding: 4px; border-radius: 6px; transition: color .15s; display: flex; }
+    .modal-close:hover { color: #333; }
+    .modal-close svg { width: 20px; height: 20px; }
+    .modal-body { padding: 24px 32px 8px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: .7rem; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .form-group input, .form-group select { width: 100%; padding: 10px 14px; border: 1.5px solid #dde2ef; border-radius: 8px; font-size: .78rem; font-family: 'Segoe UI', Arial, sans-serif; color: #222; background: #fafbff; outline: none; transition: border-color .18s; }
+    .form-group input:focus, .form-group select:focus { border-color: #25671E; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .required { color: #c81e1e; margin-left: 2px; }
+    .items-container { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+    .item-row { display: grid; grid-template-columns: 1fr 90px 34px; gap: 8px; align-items: center; }
+    .item-row input { margin: 0; }
+    .btn-remove-item { background: none; border: 1.5px solid #fbbfbf; border-radius: 7px; color: #c81e1e; cursor: pointer; padding: 6px; display: flex; align-items: center; justify-content: center; transition: background .15s; }
+    .btn-remove-item:hover { background: #fde8e8; }
+    .btn-remove-item svg { width: 16px; height: 16px; }
+    .btn-add-item { margin-top: 6px; background: none; border: 1.5px dashed #25671E; color: #25671E; border-radius: 8px; padding: 8px 14px; font-size: .75rem; font-weight: 600; font-family: 'Segoe UI', Arial, sans-serif; cursor: pointer; transition: background .15s; width: 100%; }
+    .btn-add-item:hover { background: #e8f5e2; }
+    .modal-footer { padding: 18px 32px 26px; display: flex; justify-content: flex-end; gap: 10px; }
+    .btn-cancel { padding: 10px 22px; border-radius: 8px; border: 1.5px solid #dde2ef; background: #fff; color: #555; font-size: .75rem; font-weight: 600; font-family: 'Segoe UI', Arial, sans-serif; cursor: pointer; transition: background .15s; }
+    .btn-cancel:hover { background: #f4f6fb; }
+    .btn-submit { padding: 10px 26px; border-radius: 8px; border: none; background: #25671E; color: #fff; font-size: .75rem; font-weight: 700; font-family: 'Segoe UI', Arial, sans-serif; cursor: pointer; transition: background .18s; }
+    .btn-submit:hover { background: #48A111; }
+
+    /* ── Return Modals ── */
+    .return-modal { background: #fff; border-radius: 16px; width: 480px; max-width: 96vw; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.18); animation: slideUp .22s ease; }
+    .return-modal .modal-body { padding: 20px 28px 8px; }
+    .return-subtitle { font-size: .75rem; color: #888; margin-bottom: 16px; }
+    .received-by-box { background: #f4fbf2; border: 1.5px solid #c8e6c0; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+    .received-by-box label { display: flex; align-items: center; gap: 7px; font-size: .7rem; font-weight: 700; color: #25671E; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+    .received-by-box label svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .received-by-box input { width: 100%; padding: 10px 13px; border: 1.5px solid #b8ddb4; border-radius: 8px; font-size: .78rem; font-family: 'Segoe UI', Arial, sans-serif; color: #222; background: #fff; outline: none; transition: border-color .18s; }
+    .received-by-box input:focus { border-color: #25671E; }
+    .return-item-list { display: flex; flex-direction: column; gap: 8px; }
+    .return-item-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px; border: 1.5px solid #eef0f6; transition: border-color .15s, background .15s; cursor: pointer; }
+    .return-item-row:hover:not(.is-returned) { border-color: #25671E; background: #f4fbf2; }
+    .return-item-row.is-returned { background: #f8fffe; border-color: #d0f0e0; cursor: default; opacity: .7; }
+    .return-item-row input[type="checkbox"] { width: 17px; height: 17px; accent-color: #25671E; flex-shrink: 0; cursor: pointer; }
+    .return-item-info { flex: 1; }
+    .return-item-name { font-size: .75rem; font-weight: 600; color: #111; }
+    .return-item-name.struck { text-decoration: line-through; color: #aaa; }
+    .return-item-qty { font-size: .7rem; color: #999; margin-top: 1px; }
+    .tag-already-returned { font-size: .6rem; background: #e3fbec; color: #0e9a4a; padding: 2px 9px; border-radius: 10px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+    .return-modal-footer { padding: 14px 28px 22px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .return-modal-footer .left { font-size: .75rem; color: #888; }
+    .return-modal-footer .right { display: flex; gap: 10px; }
+    .btn-return-selected { padding: 10px 22px; border-radius: 8px; border: none; background: #25671E; color: #fff; font-size: .75rem; font-weight: 700; font-family: 'Segoe UI', Arial, sans-serif; cursor: pointer; transition: background .18s; }
+    .btn-return-selected:hover { background: #48A111; }
+    .btn-return-selected:disabled { background: #b0c4b0; cursor: not-allowed; }
+
+    /* ── Single Return Modal ── */
+    .single-return-modal { background: #fff; border-radius: 16px; width: 420px; max-width: 96vw; box-shadow: 0 20px 60px rgba(0,0,0,.18); animation: slideUp .22s ease; }
+    .single-return-modal .modal-body { padding: 22px 28px 10px; }
+    .single-return-modal .modal-header { padding: 22px 28px 14px; border-bottom: 1.5px solid #eef0f6; display: flex; align-items: center; justify-content: space-between; }
+    .single-return-modal .modal-footer { padding: 14px 28px 24px; display: flex; justify-content: flex-end; gap: 10px; }
+    .return-confirm-info { background: #f4fbf2; border: 1.5px solid #c8e6c0; border-radius: 10px; padding: 13px 16px; margin-bottom: 18px; font-size: .78rem; color: #2a6e22; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+    .return-confirm-info svg { width: 16px; height: 16px; flex-shrink: 0; color: #25671E; }
+
+    /* ── Delete Confirm ── */
+    .confirm-modal { background: #fff; border-radius: 14px; width: 360px; max-width: 96vw; padding: 28px; box-shadow: 0 16px 48px rgba(0,0,0,.16); animation: slideUp .2s ease; text-align: center; }
+    .confirm-modal .del-icon { width: 52px; height: 52px; border-radius: 50%; background: #fde8e8; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+    .confirm-modal .del-icon svg { width: 26px; height: 26px; color: #c81e1e; }
+    .confirm-modal h3 { font-size: 1rem; font-weight: 700; color: #111; margin-bottom: 8px; }
+    .confirm-modal p { font-size: .75rem; color: #666; margin-bottom: 22px; }
+    .confirm-modal-btns { display: flex; justify-content: center; gap: 10px; }
+    .btn-danger { padding: 10px 22px; border-radius: 8px; border: none; background: #c81e1e; color: #fff; font-size: .75rem; font-weight: 700; font-family: 'Segoe UI', Arial, sans-serif; cursor: pointer; transition: background .18s; }
+    .btn-danger:hover { background: #a81818; }
+
+    /* ── Return Details Modal ── */
+    .details-modal { background: #fff; border-radius: 16px; width: 520px; max-width: 96vw; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.18); animation: slideUp .22s ease; }
+    .details-modal .modal-body { padding: 24px 32px 20px; }
+    .detail-header-card { background: linear-gradient(135deg, #f4fbf2 0%, #e8f5e2 100%); border: 1.5px solid #c8e6c0; border-radius: 12px; padding: 20px 22px; margin-bottom: 22px; display: flex; align-items: center; gap: 16px; }
+    .detail-avatar { width: 46px; height: 46px; border-radius: 50%; background: #25671E; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 700; flex-shrink: 0; }
+    .detail-header-info { flex: 1; }
+    .detail-name { font-size: .95rem; font-weight: 700; color: #111; }
+    .detail-dept { font-size: .72rem; color: #666; margin-top: 2px; }
+    .detail-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px; }
+    .detail-meta-box { background: #f8f9fe; border: 1.5px solid #eef0f6; border-radius: 10px; padding: 13px 16px; }
+    .detail-meta-box.full-width { grid-column: 1 / -1; }
+    .detail-meta-label { font-size: .62rem; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+    .detail-meta-value { font-size: .78rem; font-weight: 600; color: #222; }
+    .detail-meta-value.green { color: #0e9a4a; }
+    .detail-meta-value.received { color: #1a56db; }
+    .detail-section-title { font-size: .65rem; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; }
+    .detail-items-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+    .detail-item-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; background: #f8f9fe; border: 1.5px solid #eef0f6; border-radius: 10px; }
+    .detail-item-name { font-size: .78rem; font-weight: 600; color: #222; }
+    .detail-item-qty { font-size: .72rem; color: #888; background: #eef0f6; padding: 2px 9px; border-radius: 8px; }
+    .detail-returned-tag { font-size: .62rem; background: #e3fbec; color: #0e9a4a; padding: 3px 10px; border-radius: 8px; font-weight: 600; }
+    .detail-modal-footer { padding: 16px 32px 26px; display: flex; justify-content: flex-end; }
+    .device-cell { display: flex; align-items: center; gap: 7px; }
+    .device-cell svg { width: 14px; height: 14px; color: #aaa; flex-shrink: 0; }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 28px; right: 28px; display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-radius: 12px; background: #222; color: #fff; font-size: .78rem; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.18); z-index: 9999; transform: translateY(80px); opacity: 0; transition: transform .3s ease, opacity .3s ease; min-width: 240px; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .toast-success { background: #1c6b34; }
+    .toast-error   { background: #c81e1e; }
+
+    .clickable-row {
+    cursor: pointer;
+}
+
+.clickable-row:hover {
+    background: #f4fbf2 !important;
+}
+</style>
+
+<div class="main">
+    <div class="page-header">
+        <h2>🗒 Borrowing List</h2>
+        <div class="tabs-bar">
+            <a href="@Url.Action("Index", "Borrowing", new { tab = "borrowed" })"
+               class="tab-btn @(Model.ActiveTab == "borrowed" ? "active" : "")">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M5 8h14M5 8a2 2 0 1 0 0-4h14a2 2 0 1 0 0 4M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/>
+                </svg>
+                Borrowed <span class="tab-count">@Model.CountBorrowed</span>
+            </a>
+            <a href="@Url.Action("Index", "Borrowing", new { tab = "returned" })"
+               class="tab-btn @(Model.ActiveTab == "returned" ? "active" : "")">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <polyline points="1 4 1 10 7 10"/>
+                    <path d="M3.51 15a9 9 0 1 0 .49-4"/>
+                </svg>
+                Returned <span class="tab-count">@Model.CountReturned</span>
+            </a>
+            <a href="@Url.Action("Index", "Borrowing", new { tab = "deployed" })"
+               class="tab-btn @(Model.ActiveTab == "deployed" ? "active" : "")">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                    <path d="M8 21h8M12 17v4"/>
+                </svg>
+                Deployed <span class="tab-count">@Model.CountDeployed</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <div class="search-wrap">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="text" id="searchInput"
+                   placeholder="@(Model.ActiveTab == "deployed" ? "Search by name, department, device, or serial..." : "Search by borrower, department, or item...")"
+                   value="@Model.Search"
+                   onkeyup="liveSearch(this.value)">
+        </div>
+        <button class="btn-export" onclick="exportCSV()">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15" height="15">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export CSV
+        </button>
+        <button class="btn-import-open" onclick="openImportModal()">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15" height="15">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Import CSV
+        </button>
+        @if (Model.ActiveTab == "borrowed")
+        {
+            <button class="btn-new" onclick="openNewBorrowModal()">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                New Borrow
+            </button>
+        }
+        else if (Model.ActiveTab == "deployed")
+        {
+            <button class="btn-new" onclick="openNewDeploymentModal()">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                New Deployment
+            </button>
+        }
+    </div>
+
+    <div class="table-card">
+        <div class="table-scroll">
+
+            @if (Model.ActiveTab == "deployed")
+            {
+                <table id="borrowTable">
+                    <thead>
+                        <tr>
+                            <th>Date Deployed</th>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Device</th>
+                            <th>Serial No.</th>
+                            <th>Deployed By</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.Deployments.Any())
+                        {
+                            <tr class="empty-row"><td colspan="8">No deployment records found.</td></tr>
+                        }
+                        else
+                        {
+                    @foreach (var d in Model.Deployments)
+                    {
+                        var rowId = $"dropdown-deploy-{d.Id}";
+                        var deployDetail = System.Text.Json.JsonSerializer.Serialize(new {
+                            id            = d.Id,
+                            name          = d.UserName      ?? "",
+                            serial        = d.SerialNumber  ?? "",
+                            dept          = d.Department    ?? "",
+                            status        = d.Status        ?? "Deployed",
+                            device        = d.DeviceName    ?? "",
+                            deployed_by   = d.DeployedBy    ?? "",
+                            date_deployed = d.DateDeployed  ?? ""
+                        });
+
+                        <tr class="clickable-row"
+                            data-detail="@Html.Encode(deployDetail)"
+                            onclick="openDeployDetails(this)">
+                            <td>@d.DateDeployed</td>
+
+                                    <td><div class="borrower-name">@d.UserName</div></td>
+                                    <td><span class="dept">@(string.IsNullOrEmpty(d.Department) ? "—" : d.Department)</span></td>
+                                    <td><div class="device-cell">@d.DeviceName</div></td>
+                                    <td style="color:#555;">@(string.IsNullOrEmpty(d.SerialNumber) ? "—" : d.SerialNumber)</td>
+                                    <td style="color:#555;">@(string.IsNullOrEmpty(d.DeployedBy) ? "—" : d.DeployedBy)</td>
+<td><span class="badge @(d.Status == "Returned" ? "badge-Returned" : "badge-Deployed")">@d.Status</span></td>                                    <td>
+                                        <div class="action-wrap">
+                                            <button class="btn-dots" onclick="toggleDropdown('@rowId', event)" title="Actions">
+                                                <svg fill="currentColor" viewBox="0 0 24 24">
+                                                    <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                                                </svg>
+                                            </button>
+                                            <div class="dropdown-menu" id="@rowId">
+                                            <button class="dropdown-item item-edit"
+                                                                                    onclick="closeAllDropdowns(); openEditDeploymentModal(@d.Id, '@Html.Raw((d.UserName ?? "").Replace("'","\\\'"))', '@Html.Raw((d.SerialNumber ?? "").Replace("'","\\\'"))', '@Html.Raw((d.Department ?? "").Replace("'","\\\'"))', '@Html.Raw((d.DeviceName ?? "").Replace("'","\\\'"))', '@d.DateDeployed', '@Html.Raw((d.DeployedBy ?? "").Replace("'","\\\'"))', '@(d.Status ?? "Deployed")')">                                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                        </svg>
+                                        Edit Entry
+                                    </button>
+                                                <div class="dropdown-divider"></div>
+                                                <button class="dropdown-item item-delete"
+                                                        onclick="closeAllDropdowns(); openDeleteDeployModal(@d.Id, '@Html.Raw((d.UserName ?? "").Replace("'","\\\'"))')">                                                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                        <polyline points="3 6 5 6 21 6"/>
+                                                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                                        <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                                    </svg>
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <table id="borrowTable">
+                    <thead>
+                        <tr>
+                            <th>Date Borrowed</th>
+                            <th>Borrower Name</th>
+                            <th>Department</th>
+                            <th>@(Model.ActiveTab == "returned" ? "Items Returned" : "Items Borrowed")</th>
+                            <th>Serial No.</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.Borrowings.Any())
+                        {
+                            <tr class="empty-row">
+                                <td colspan="7">@(Model.ActiveTab == "returned" ? "No returned records found." : "No active borrowing records found.")</td>
+                            </tr>
+                        }
+                        else
+                        {
+@foreach (var b in Model.Borrowings)
+{
+    var rowId       = $"dropdown-{b.Id}";
+    var badgeCls    = $"badge-{b.DisplayStatus}";
+    var jsItems     = System.Text.Json.JsonSerializer.Serialize(
+        b.Items.Where(i => i.ItemName.Trim() != "")
+               .Select(i => new { id = i.Id, name = i.ItemName, qty = i.Quantity, status = i.Status }));
+    var jsItemPairs = b.Items.Any(i => i.ItemName.Trim() != "")
+        ? System.Text.Json.JsonSerializer.Serialize(
+            b.Items.Where(i => i.ItemName.Trim() != "")
+                   .Select(i => new[] { i.ItemName, i.Quantity.ToString() }))
+        : "[]";
+    var rowDetail = System.Text.Json.JsonSerializer.Serialize(new {
+        id            = b.Id,
+        name          = b.BorrowerName,
+        serial        = b.SerialNumber  ?? "",
+        dept          = b.Department    ?? "",
+        status        = b.DisplayStatus,
+        date_borrowed = b.DateBorrowed,
+        date_returned = b.DateReturned  ?? "",
+        received_by   = b.ReceivedBy    ?? "",
+        items         = b.Items.Where(i => i.ItemName.Trim() != "")
+                               .Select(i => new { id = i.Id, name = i.ItemName, qty = i.Quantity, status = i.Status })
+    });
+
+    <tr class="clickable-row"
+        data-detail="@Html.Encode(rowDetail)"
+        onclick="openRowDetails(this)">
+        <td>@b.DateBorrowed</td>
+        <td><div class="borrower-name">@b.BorrowerName</div></td>
+        <td><span class="dept">@b.Department</span></td>
+        <td>
+            <ul class="items-list">
+                @foreach (var item in b.Items.Where(i => i.ItemName.Trim() != ""))
+                {
+                    var struck = (item.Status == "Returned" && Model.ActiveTab == "borrowed") ? "struck" : "";
+                    <li>
+                        <div class="item-line">
+                            <span class="item-text @struck">
+                                @item.ItemName
+                                <span class="item-qty"> x@(item.Quantity)</span>
+                            </span>
+                        </div>
+                    </li>
+                }
+            </ul>
+        </td>
+        <td style="color:#555;">@(string.IsNullOrEmpty(b.SerialNumber) ? "—" : b.SerialNumber)</td>
+        <td><span class="badge @badgeCls">@b.DisplayStatus</span></td>
+        <td>
+            <div class="action-wrap">
+                <button class="btn-dots" onclick="toggleDropdown('@rowId', event)" title="Actions">
+                    <svg fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                    </svg>
+                </button>
+                <div class="dropdown-menu" id="@rowId">
+                    @if (Model.ActiveTab == "borrowed" && !b.AllReturned)
+                    {
+                        <button class="dropdown-item item-return"
+                            data-id="@b.Id"
+                            data-multi="@(b.IsMulti ? "true" : "false")"
+                            data-name="@Html.Encode(b.BorrowerName)"
+                            data-items="@Html.Encode(jsItems)"
+                            onclick="closeAllDropdowns(); handleReturnBtn(this)">
+                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/>
+                                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                            </svg>
+                            Mark as Returned
+                        </button>
+                        <div class="dropdown-divider"></div>
+                    }
+                    <button class="dropdown-item item-edit"
+                        data-id="@b.Id"
+                        data-name="@Html.Encode(b.BorrowerName)"
+                        data-serial="@Html.Encode(b.SerialNumber)"
+                        data-dept="@Html.Encode(b.Department)"
+                        data-date="@(b.DateBorrowed.Length > 10 ? b.DateBorrowed.Substring(0,10) : b.DateBorrowed)"
+                        data-status="@b.Status"
+                        data-items="@Html.Encode(jsItemPairs)"
+                        onclick="closeAllDropdowns(); openEditModalBtn(this)">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        Edit Entry
+                    </button>
+                    <button class="dropdown-item item-delete"
+                        onclick="closeAllDropdowns(); openDeleteModal(@b.Id, '@Html.Raw(b.BorrowerName.Replace("'","\\\'"))', '@Model.ActiveTab')">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                            <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                        </svg>
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </td>
+    </tr>
+}
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        <div class="pagination-bar" id="paginationBar">
+            <span class="pagination-info" id="paginationInfo"></span>
+            <div class="pagination-btns" id="paginationBtns"></div>
+        </div>
+    </div>
+</div>
+
+
+
+<div class="modal-overlay" id="newDeploymentModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>New Device Deployment</h3>
+            <button class="modal-close" onclick="closeModal('newDeploymentModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form asp-action="AddDeployment" asp-controller="Borrowing" method="post">
+            @Html.AntiForgeryToken()
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Name <span class="required">*</span></label>
+                    <input type="text" name="user_name" placeholder="e.g. John Smith" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Department</label>
+                        <input type="text" name="department" placeholder="e.g. Engineering">
+                    </div>
+                    <div class="form-group">
+                        <label>Serial Number</label>
+                        <input type="text" name="serial_number" placeholder="e.g. SN-00123">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Device <span class="required">*</span></label>
+                    <input type="text" name="device_name" placeholder="e.g. Dell Latitude 7420" required>
+                </div>
+                <div class="form-group">
+                    <label>Date Deployed <span class="required">*</span></label>
+                    <input type="date" name="date_deployed" id="date_deployed_new" required>
+                </div>
+                <div class="form-group">
+                    <label>Deployed By</label>
+                    <input type="text" name="deployed_by" placeholder="e.g. Maria Santos">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('newDeploymentModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Deploy Device</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="editDeploymentModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>Edit Deployment</h3>
+            <button class="modal-close" onclick="closeModal('editDeploymentModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form asp-action="EditDeployment" asp-controller="Borrowing" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="editDeployId">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Name <span class="required">*</span></label>
+                    <input type="text" name="user_name" id="editDeployUserName" placeholder="e.g. John Smith" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Department</label>
+                        <input type="text" name="department" id="editDeployDepartment">
+                    </div>
+                    <div class="form-group">
+                        <label>Serial Number</label>
+                        <input type="text" name="serial_number" id="editDeploySerial">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Device <span class="required">*</span></label>
+                    <input type="text" name="device_name" id="editDeployDeviceName" required>
+                </div>
+                <div class="form-group">
+                    <label>Date Deployed <span class="required">*</span></label>
+                    <input type="date" name="date_deployed" id="editDeployDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Deployed By</label>
+                    <input type="text" name="deployed_by" id="editDeployDeployedBy">
+                </div>
+                <div class="form-group">
+                    <label>Status <span class="required">*</span></label>
+                    <select name="status" id="editDeployStatus">
+                        <option value="Deployed">Deployed</option>
+                        <option value="Returned">Returned</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('editDeploymentModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="newBorrowModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>New Borrow Entry</h3>
+            <button class="modal-close" onclick="closeModal('newBorrowModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form asp-action="AddBorrow" asp-controller="Borrowing" method="post">
+            @Html.AntiForgeryToken()
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Borrower Name <span class="required">*</span></label>
+                    <input type="text" name="borrower_name" placeholder="e.g. John Smith" required>
+                </div>
+                <div class="form-group">
+                    <label>Serial Number</label>
+                    <input type="text" name="serial_number" placeholder="e.g. SN-00123">
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <input type="text" name="department" placeholder="e.g. Engineering">
+                </div>
+                <div class="form-group">
+                    <label>Items Borrowed <span class="required">*</span></label>
+                    <div class="items-container" id="itemsContainer">
+                        <div class="item-row">
+                            <input type="text" name="items" placeholder="Item name" required>
+                            <input type="number" name="items_qty" placeholder="Qty" min="1" value="1" required>
+                            <button type="button" class="btn-remove-item" onclick="removeItemRow(this)">
+                                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-add-item" onclick="addItemRow()">+ Add Another Item</button>
+                </div>
+                <div class="form-group">
+                    <label>Date Borrowed <span class="required">*</span></label>
+                    <input type="date" name="date_borrowed" id="date_borrowed" required>
+                </div>
+                <div class="form-group">
+                    <label>Status <span class="required">*</span></label>
+                    <select name="status">
+                        <option value="Borrowed">Borrowed</option>
+                        <option value="Returned">Returned</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('newBorrowModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Save Entry</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="editBorrowModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Edit Borrow Entry</h3>
+            <button class="modal-close" onclick="closeModal('editBorrowModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form asp-action="EditBorrow" asp-controller="Borrowing" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="editId">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Borrower Name <span class="required">*</span></label>
+                    <input type="text" name="borrower_name" id="editBorrowerName" required>
+                </div>
+                <div class="form-group">
+                    <label>Serial Number</label>
+                    <input type="text" name="serial_number" id="editSerialNumber">
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <input type="text" name="department" id="editDepartment">
+                </div>
+                <div class="form-group">
+                    <label>Items Borrowed <span class="required">*</span></label>
+                    <div class="items-container" id="editItemsContainer"></div>
+                    <button type="button" class="btn-add-item" onclick="addEditItemRow()">+ Add Another Item</button>
+                </div>
+                <div class="form-group">
+                    <label>Date Borrowed <span class="required">*</span></label>
+                    <input type="date" name="date_borrowed" id="editDateBorrowed" required>
+                </div>
+                <div class="form-group">
+                    <label>Status <span class="required">*</span></label>
+                    <select name="status" id="editStatus">
+                        <option value="Borrowed">Borrowed</option>
+                        <option value="Returned">Returned</option>
+                        <option value="Overdue">Overdue</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('editBorrowModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="singleReturnModal">
+    <div class="single-return-modal">
+        <div class="modal-header">
+            <h3>Confirm Return</h3>
+            <button class="modal-close" onclick="closeModal('singleReturnModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="return-confirm-info">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+                </svg>
+                <span id="singleReturnMsg">Mark this item as returned?</span>
+            </div>
+            <div class="received-by-box">
+                <label>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    Received By
+                </label>
+                <input type="text" id="singleReceivedByInput" placeholder="e.g. Maria Santos" autocomplete="off">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('singleReturnModal')">Cancel</button>
+            <button type="button" class="btn-submit" onclick="submitSingleReturn()">Confirm Return</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="returnModal">
+    <div class="return-modal">
+        <div class="modal-header">
+            <h3>Return Items</h3>
+            <button class="modal-close" onclick="closeModal('returnModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="received-by-box">
+                <label>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    Received By (IT Staff)
+                </label>
+                <input type="text" id="multiReceivedByInput" placeholder="e.g. Maria Santos" autocomplete="off">
+            </div>
+            <p class="return-subtitle" id="returnSubtitle">Select the items that have been returned.</p>
+            <div class="return-item-list" id="returnItemList"></div>
+        </div>
+        <div class="return-modal-footer">
+            <span class="left" id="returnSelectionCount">0 item(s) selected</span>
+            <div class="right">
+                <button type="button" class="btn-cancel" onclick="closeModal('returnModal')">Cancel</button>
+                <button type="button" class="btn-return-selected" id="btnReturnSelected" onclick="submitReturnSelected()" disabled>Mark as Returned</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="detailsModal">
+    <div class="details-modal">
+        <div class="modal-header">
+            <h3>Return Details</h3>
+            <button class="modal-close" onclick="closeModal('detailsModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="detail-header-card">
+                <div class="detail-avatar" id="detailAvatar">–</div>
+                <div class="detail-header-info">
+                    <div class="detail-name" id="detailName">–</div>
+                    <div class="detail-dept" id="detailDept">–</div>
+                </div>
+                <span class="badge badge-Returned">Returned</span>
+            </div>
+            <div class="detail-meta-grid">
+                <div class="detail-meta-box"><div class="detail-meta-label">Serial Number</div><div class="detail-meta-value" id="detailSerial">—</div></div>
+                <div class="detail-meta-box"><div class="detail-meta-label">Department</div><div class="detail-meta-value" id="detailDeptBox">—</div></div>
+                <div class="detail-meta-box"><div class="detail-meta-label">Date Borrowed</div><div class="detail-meta-value" id="detailDateBorrowed">—</div></div>
+                <div class="detail-meta-box"><div class="detail-meta-label">Date Returned</div><div class="detail-meta-value green" id="detailDateReturned">—</div></div>
+                <div class="detail-meta-box full-width"><div class="detail-meta-label">Received By</div><div class="detail-meta-value received" id="detailReceivedBy">—</div></div>
+            </div>
+            <div class="detail-section-title">Items Returned</div>
+            <div class="detail-items-list" id="detailItemsList"></div>
+        </div>
+        <div class="detail-modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('detailsModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+    <div class="confirm-modal">
+        <div class="del-icon">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+        </div>
+        <h3>Delete Entry?</h3>
+        <p id="deleteMsg">This action cannot be undone.</p>
+        <form asp-action="DeleteBorrow" asp-controller="Borrowing" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="deleteId">
+            <input type="hidden" name="current_tab" id="deleteTab">
+            <div class="confirm-modal-btns">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="submit" class="btn-danger">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="deleteDeployModal">
+    <div class="confirm-modal">
+        <div class="del-icon">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+        </div>
+        <h3>Delete Deployment?</h3>
+        <p id="deleteDeployMsg">This action cannot be undone.</p>
+        <form asp-action="DeleteDeployment" asp-controller="Borrowing" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="deleteDeployId">
+            <div class="confirm-modal-btns">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteDeployModal')">Cancel</button>
+                <button type="submit" class="btn-danger">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="importModal">
+    <div class="modal" style="width:720px;">
+        <div class="modal-header">
+            <h3>Import CSV — <span id="importTabLabel">Borrowed</span></h3>
+            <button class="modal-close" onclick="closeModal('importModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div id="importStep1">
+                <div class="drop-zone" onclick="document.getElementById('importFileInput').click()" style="border:2px dashed #dde2ef;border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:border-color .18s,background .18s;">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" width="40" height="40" style="color:#ccc;margin-bottom:12px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <div style="font-size:.85rem;font-weight:600;color:#555;">Click to select a CSV file</div>
+                    <div style="font-size:.72rem;color:#aaa;margin-top:4px;">or drag and drop here</div>
+                    <input type="file" id="importFileInput" accept=".csv" style="display:none;">
+                </div>
+                <div id="importFileError" style="display:none;color:#c81e1e;font-size:.75rem;margin-top:8px;"></div>
+                <div style="margin-top:14px;font-size:.72rem;color:#888;" id="importHint"></div>
+            </div>
+            <div id="importStep2" style="display:none;">
+                <div id="importSummaryBar" style="margin-bottom:12px;font-size:.75rem;color:#555;"></div>
+                <div style="overflow:auto;max-height:300px;border:1.5px solid #eef0f6;border-radius:10px;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead id="importPreviewHead"></thead>
+                        <tbody id="importPreviewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer" style="justify-content:space-between;">
+            <button type="button" id="importTemplateBtn" onclick="downloadImportTemplate()" style="background:none;border:none;color:#25671E;font-weight:700;cursor:pointer;font-size:.75rem;">Download template</button>
+            <div style="display:flex;gap:10px;">
+                <button type="button" class="btn-cancel" onclick="closeModal('importModal')">Cancel</button>
+                <button type="button" id="importPreviewBtn" class="btn-submit" onclick="previewImport()" style="display:none;">Preview</button>
+                <form id="importSubmitForm" method="post" style="display:none;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="rowsJson" id="importRowsJson">
+                    <input type="hidden" name="tab" id="importTabInput">
+                    <button type="submit" id="importSubmitBtn" class="btn-submit">Import</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form asp-action="ReturnAll" asp-controller="Borrowing" method="post" id="returnAllForm" style="display:none">    @Html.AntiForgeryToken()
+    <input type="hidden" name="borrow_id"   id="returnAllBorrowId">
+    <input type="hidden" name="received_by" id="returnAllReceivedBy">
+</form>
+<form asp-action="ReturnItem" asp-controller="Borrowing" method="post" id="returnItemForm" style="display:none">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="borrow_id"   id="returnItemBorrowId">
+    <input type="hidden" name="item_id"     id="returnItemId">
+    <input type="hidden" name="received_by" id="returnItemReceivedBy">
+</form>
+
+<div class="toast" id="toastNotif">
+    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" id="toastIcon"></svg>
+    <span id="toastMsg"></span>
+</div>
+
+@* ══ ROW DETAILS MODAL ══ *@
+<div class="modal-overlay" id="rowDetailModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="rdTitle">Borrow Details</h3>
+            <button class="modal-close" onclick="closeModal('rowDetailModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="detail-header-card">
+                <div class="detail-avatar" id="rdAvatar">–</div>
+                <div class="detail-header-info">
+                    <div class="detail-name" id="rdName">–</div>
+                    <div class="detail-dept" id="rdDept">–</div>
+                </div>
+                <span class="badge" id="rdBadge">–</span>
+            </div>
+            <div class="detail-meta-grid">
+                <div class="detail-meta-box">
+                    <div class="detail-meta-label">Serial Number</div>
+                    <div class="detail-meta-value" id="rdSerial">—</div>
+                </div>
+                <div class="detail-meta-box">
+                    <div class="detail-meta-label">Department</div>
+                    <div class="detail-meta-value" id="rdDeptBox">—</div>
+                </div>
+                <div class="detail-meta-box">
+                    <div class="detail-meta-label">Date Borrowed</div>
+                    <div class="detail-meta-value" id="rdDateBorrowed">—</div>
+                </div>
+                <div class="detail-meta-box">
+                    <div class="detail-meta-label">Date Returned</div>
+                    <div class="detail-meta-value green" id="rdDateReturned">—</div>
+                </div>
+                <div class="detail-meta-box full-width">
+                    <div class="detail-meta-label">Received By</div>
+                    <div class="detail-meta-value received" id="rdReceivedBy">—</div>
+                </div>
+            </div>
+            <div class="detail-section-title">Items</div>
+            <div class="detail-items-list" id="rdItemsList"></div>
+        </div>
+        <div class="detail-modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('rowDetailModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+/* ── Dropdown ── */
+function toggleDropdown(id, e) {
+    e.stopPropagation();
+    const menu = document.getElementById(id);
+    const isOpen = menu.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+        const btn = e.currentTarget;
+        const rect = btn.getBoundingClientRect();
+        const spaceB = window.innerHeight - rect.bottom;
+        menu.style.right = (window.innerWidth - rect.right) + 'px';
+        if (spaceB < 160) { menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px'; menu.style.top = 'auto'; }
+        else { menu.style.top = (rect.bottom + 4) + 'px'; menu.style.bottom = 'auto'; }
+        menu.classList.add('open');
+    }
+}
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-menu.open').forEach(m => m.classList.remove('open'));
+}
+document.addEventListener('click', closeAllDropdowns);
+
+/* ── Modal helpers ── */
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', function(e) { if (e.target === this) closeModal(this.id); });
+});
+
+/* ── Deployment modals ── */
+function openNewDeploymentModal() {
+    document.getElementById('date_deployed_new').value = new Date().toISOString().split('T')[0];
+    openModal('newDeploymentModal');
+}
+function openEditDeploymentModal(id, userName, serial, dept, deviceName, date, deployedBy = '', status = 'Deployed') {
+    document.getElementById('editDeployId').value         = id;
+    document.getElementById('editDeployUserName').value   = userName;
+    document.getElementById('editDeploySerial').value     = serial;
+    document.getElementById('editDeployDepartment').value = dept;
+    document.getElementById('editDeployDeviceName').value = deviceName;
+    document.getElementById('editDeployDate').value       = date;
+    document.getElementById('editDeployDeployedBy').value = deployedBy;
+    document.getElementById('editDeployStatus').value     = status;
+    openModal('editDeploymentModal');
+}
+function openDeleteDeployModal(id, name) {
+    document.getElementById('deleteDeployId').value = id;
+    document.getElementById('deleteDeployMsg').textContent = 'You are about to delete the deployment for "' + name + '". This cannot be undone.';
+    openModal('deleteDeployModal');
+}
+
+/* ── New borrow ── */
+function openNewBorrowModal() {
+    document.getElementById('date_borrowed').value = new Date().toISOString().split('T')[0];
+    openModal('newBorrowModal');
+}
+function addItemRow() {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `<input type="text" name="items" placeholder="Item name" required><input type="number" name="items_qty" placeholder="Qty" min="1" value="1" required><button type="button" class="btn-remove-item" onclick="removeItemRow(this)"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`;
+    document.getElementById('itemsContainer').appendChild(row);
+}
+function removeItemRow(btn) {
+    if (document.querySelectorAll('#itemsContainer .item-row').length > 1)
+        btn.closest('.item-row').remove();
+}
+
+/* ── Edit borrow modal ── */
+function openEditModal(id, name, serial, dept, date, status, items) {
+    document.getElementById('editId').value           = id;
+    document.getElementById('editBorrowerName').value = name;
+    document.getElementById('editSerialNumber').value = serial || '';
+    document.getElementById('editDepartment').value   = dept  || '';
+    // Ensure date is in yyyy-MM-dd format for <input type="date">
+    document.getElementById('editDateBorrowed').value = date ? date.substring(0, 10) : '';
+    document.getElementById('editStatus').value       = status || 'Borrowed';
+
+    const container = document.getElementById('editItemsContainer');
+    container.innerHTML = '';
+
+    // items comes as array of [name, qty] pairs
+    if (Array.isArray(items) && items.length > 0) {
+        let added = 0;
+        items.forEach(pair => {
+            if (pair && pair[0] && String(pair[0]).trim() !== '') {
+                addEditItemRow(String(pair[0]), pair[1] ?? 1);
+                added++;
+            }
+        });
+        // If nothing was added, add one empty row
+        if (added === 0) addEditItemRow();
+    } else {
+        addEditItemRow();
+    }
+
+    openModal('editBorrowModal');
+}
+
+function addEditItemRow(itemName = '', qty = 1) {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `<input type="text" name="items" placeholder="Item name" value="${itemName}" required><input type="number" name="items_qty" placeholder="Qty" min="1" value="${qty}" required><button type="button" class="btn-remove-item" onclick="removeEditItemRow(this)"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`;
+    document.getElementById('editItemsContainer').appendChild(row);
+}
+function removeEditItemRow(btn) {
+    if (document.querySelectorAll('#editItemsContainer .item-row').length > 1)
+        btn.closest('.item-row').remove();
+}
+
+/* ── Data-attribute wrapper for Mark as Returned button ── */
+function handleReturnBtn(btn) {
+    const id      = parseInt(btn.dataset.id);
+    const isMulti = btn.dataset.multi === 'true';
+    const name    = btn.dataset.name;
+    // Html.Encode encodes & as &amp; — decode before parsing JSON
+    const itemsJson = btn.dataset.items
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>');
+    const items = JSON.parse(itemsJson || '[]');
+    handleReturn(id, isMulti, name, items);
+}
+
+function openEditModalBtn(btn) {
+    const id     = parseInt(btn.dataset.id);
+    const name   = btn.dataset.name;
+    const serial = btn.dataset.serial || '';
+    const dept   = btn.dataset.dept   || '';
+    const date   = btn.dataset.date   || '';
+    const status = btn.dataset.status || 'Borrowed';
+
+    const itemsJson = btn.dataset.items
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>');
+
+    const items = JSON.parse(itemsJson || '[]');
+
+    openEditModal(id, name, serial, dept, date, status, items);
+}
+
+/* ── Return logic ── */
+let _returnBorrowId = null, _singleBorrowId = null;
+function handleReturn(borrowId, isMulti, borrowerName, items) {
+    if (!isMulti) {
+        _singleBorrowId = borrowId;
+        document.getElementById('singleReturnMsg').textContent = 'Mark the item as returned for ' + borrowerName + '?';
+        document.getElementById('singleReceivedByInput').value = '';
+        openModal('singleReturnModal'); return;
+    }
+    _returnBorrowId = borrowId;
+    document.getElementById('returnSubtitle').textContent = 'Select which item(s) ' + borrowerName + ' has returned.';
+    document.getElementById('multiReceivedByInput').value = '';
+    const list = document.getElementById('returnItemList');
+    list.innerHTML = '';
+    items.forEach(item => {
+        const isReturned = item.status === 'Returned';
+        const row = document.createElement('label');
+        row.className = 'return-item-row' + (isReturned ? ' is-returned' : '');
+        const chk = document.createElement('input');
+        chk.type = 'checkbox'; chk.value = item.id; chk.checked = false; chk.disabled = isReturned;
+        chk.addEventListener('change', updateReturnCount);
+        const info = document.createElement('div');
+        info.className = 'return-item-info';
+        info.innerHTML = `<div class="return-item-name${isReturned ? ' struck' : ''}">${escHtml(item.name)}</div><div class="return-item-qty">Qty: ${item.qty}</div>`;
+        row.appendChild(chk); row.appendChild(info);
+        if (isReturned) {
+            const tag = document.createElement('span');
+            tag.className = 'tag-already-returned'; tag.textContent = 'Already Returned';
+            row.appendChild(tag);
+        }
+        list.appendChild(row);
+    });
+    updateReturnCount(); openModal('returnModal');
+}
+function submitSingleReturn() {
+    const receivedBy = document.getElementById('singleReceivedByInput').value.trim();
+    document.getElementById('returnAllBorrowId').value   = _singleBorrowId;
+    document.getElementById('returnAllReceivedBy').value = receivedBy;
+    document.getElementById('returnAllForm').submit();
+}
+function updateReturnCount() {
+    const count = document.querySelectorAll('#returnItemList input[type="checkbox"]:checked').length;
+    document.getElementById('returnSelectionCount').textContent = count + ' item(s) selected';
+    document.getElementById('btnReturnSelected').disabled = count === 0;
+}
+function submitReturnSelected() {
+    const checked = document.querySelectorAll('#returnItemList input[type="checkbox"]:checked');
+    if (checked.length === 0) return;
+    const receivedBy = document.getElementById('multiReceivedByInput').value.trim();
+
+    // Check if ALL non-returned items are checked → use ReturnAll
+    const totalBorrowedItems = document.querySelectorAll('#returnItemList input[type="checkbox"]:not(:disabled)').length;
+    const checkedCount = checked.length;
+
+    if (checkedCount >= totalBorrowedItems) {
+        // All remaining items selected → mark whole borrow as returned
+        document.getElementById('returnAllBorrowId').value   = _returnBorrowId;
+        document.getElementById('returnAllReceivedBy').value = receivedBy;
+        document.getElementById('returnAllForm').submit();
+    } else {
+        // Partial return → return first selected item
+        document.getElementById('returnItemBorrowId').value   = _returnBorrowId;
+        document.getElementById('returnItemId').value         = parseInt(checked[0].value);
+        document.getElementById('returnItemReceivedBy').value = receivedBy;
+        document.getElementById('returnItemForm').submit();
+    }
+}
+function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Details modal ── */
+function openDetailsModal(data) {
+    const initials = data.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    document.getElementById('detailAvatar').textContent       = initials;
+    document.getElementById('detailName').textContent         = data.name;
+    document.getElementById('detailDept').textContent         = data.dept || '—';
+    document.getElementById('detailSerial').textContent       = data.serial || '—';
+    document.getElementById('detailDeptBox').textContent      = data.dept || '—';
+    document.getElementById('detailDateBorrowed').textContent = data.date_borrowed || '—';
+    document.getElementById('detailDateReturned').textContent = data.date_returned || '—';
+    document.getElementById('detailReceivedBy').textContent   = data.received_by || '—';
+    const list = document.getElementById('detailItemsList');
+    list.innerHTML = '';
+    (data.items || []).forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'detail-item-row';
+        row.innerHTML = `<span class="detail-item-name">${escHtml(item.name)}</span><div style="display:flex;align-items:center;gap:8px;"><span class="detail-item-qty">x${item.qty}</span><span class="detail-returned-tag">Returned</span></div>`;
+        list.appendChild(row);
+    });
+    openModal('detailsModal');
+}
+
+/* ── Delete modals ── */
+function openDeleteModal(id, name, tab) {
+    document.getElementById('deleteId').value  = id;
+    document.getElementById('deleteTab').value = tab;
+    document.getElementById('deleteMsg').textContent = 'You are about to delete the entry for "' + name + '". This cannot be undone.';
+    openModal('deleteModal');
+}
+
+/* ── Pagination + Search ── */
+const PAGE_SIZE = 50;
+let currentPage = 1, currentQuery = '';
+function liveSearch(query) { currentQuery = query.toLowerCase(); currentPage = 1; renderTable(); }
+function renderTable() {
+    const allRows = Array.from(document.querySelectorAll('#borrowTable tbody tr:not(.empty-row)'));
+    const filtered = allRows.filter(row => {
+        const match = row.textContent.toLowerCase().includes(currentQuery);
+        row.style.display = 'none'; return match;
+    });
+    document.querySelectorAll('#borrowTable tbody tr.empty-row').forEach(r => r.remove());
+    if (filtered.length === 0) {
+        const tr = document.createElement('tr');
+        tr.className = 'empty-row';
+        const colCount = document.querySelectorAll('#borrowTable thead th').length;
+tr.innerHTML = `<td colspan="${colCount}">No records match your search.</td>`;
+        document.querySelector('#borrowTable tbody').appendChild(tr);
+        document.getElementById('paginationBar').style.display = 'none'; return;
+    }
+    const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+    if (currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * PAGE_SIZE, end = Math.min(start + PAGE_SIZE, filtered.length);
+    filtered.forEach((row, i) => { row.style.display = (i >= start && i < end) ? '' : 'none'; });
+    document.getElementById('paginationInfo').textContent = `Showing ${start + 1}–${end} of ${filtered.length} record${filtered.length !== 1 ? 's' : ''}`;
+    document.getElementById('paginationBar').style.display = 'flex';
+    const btns = document.getElementById('paginationBtns'); btns.innerHTML = '';
+    const prev = document.createElement('button'); prev.className = 'page-btn'; prev.disabled = currentPage === 1;
+    prev.innerHTML = `<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>`;
+    prev.onclick = () => { currentPage--; renderTable(); }; btns.appendChild(prev);
+    getPageRange(currentPage, totalPages).forEach(p => {
+        const btn = document.createElement('button'); btn.className = 'page-btn' + (p === currentPage ? ' active' : '');
+        if (p === '...') { btn.disabled = true; btn.textContent = '…'; }
+        else { btn.textContent = p; btn.onclick = () => { currentPage = p; renderTable(); }; }
+        btns.appendChild(btn);
+    });
+    const next = document.createElement('button'); next.className = 'page-btn'; next.disabled = currentPage === totalPages;
+    next.innerHTML = `<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>`;
+    next.onclick = () => { currentPage++; renderTable(); }; btns.appendChild(next);
+}
+function getPageRange(current, total) {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const pages = [1];
+    if (current > 3) pages.push('...');
+    for (let p = Math.max(2, current - 1); p <= Math.min(total - 1, current + 1); p++) pages.push(p);
+    if (current < total - 2) pages.push('...');
+    pages.push(total); return pages;
+}
+document.addEventListener('DOMContentLoaded', renderTable);
+
+/* ── Toast ── */
+@if (!string.IsNullOrEmpty(Model.ToastMessage))
+{
+    <text>
+    (function() {
+        const toast = document.getElementById('toastNotif');
+        const msgEl = document.getElementById('toastMsg');
+        const iconEl = document.getElementById('toastIcon');
+        const type = '@Model.ToastType';
+        toast.classList.add('toast-' + type);
+        msgEl.textContent = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ToastMessage));
+        iconEl.innerHTML = type === 'success'
+            ? '<path d="M20 6 9 17l-5-5"/>'
+            : '<path d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>';
+        setTimeout(() => toast.classList.add('show'), 100);
+        setTimeout(() => toast.classList.remove('show'), 3500);
+    })();
+    </text>
+}
+
+/* ── Row click → Details modal ── */
+function openRowDetails(row) {
+    // Prevent opening when clicking action buttons
+    if (event.target.closest('.action-wrap')) return;
+
+    const rawJson = row.dataset.detail
+        .replace(/&amp;/g,  '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g,  "'")
+        .replace(/&lt;/g,   '<')
+        .replace(/&gt;/g,   '>');
+
+    const data = JSON.parse(rawJson);
+
+    // Badge styling
+    const badgeEl = document.getElementById('rdBadge');
+    badgeEl.textContent = data.status || '—';
+    badgeEl.className   = 'badge badge-' + (data.status || 'Borrowed');
+
+    // Avatar initials
+    const initials = (data.name || '?').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    document.getElementById('rdAvatar').textContent       = initials;
+    document.getElementById('rdTitle').textContent        = 'Borrow Details';
+    document.getElementById('rdName').textContent         = data.name          || '—';
+    document.getElementById('rdDept').textContent         = data.dept          || '—';
+    document.getElementById('rdSerial').textContent       = data.serial        || '—';
+    document.getElementById('rdDeptBox').textContent      = data.dept          || '—';
+    document.getElementById('rdDateBorrowed').textContent = data.date_borrowed || '—';
+    document.getElementById('rdDateReturned').textContent = data.date_returned || '—';
+    document.getElementById('rdReceivedBy').textContent   = data.received_by   || '—';
+
+    // Items list
+    const list = document.getElementById('rdItemsList');
+    list.innerHTML = '';
+    (data.items || []).forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'detail-item-row';
+        const statusTag = item.status === 'Returned'
+            ? '<span class="detail-returned-tag">Returned</span>'
+            : '<span style="font-size:.62rem;background:#e8f0fe;color:#1a56db;padding:3px 10px;border-radius:8px;font-weight:600;">Borrowed</span>';
+        row.innerHTML = `
+            <span class="detail-item-name">${escHtml(item.name)}</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span class="detail-item-qty">x${item.qty}</span>
+                ${statusTag}
+            </div>`;
+        list.appendChild(row);
+    });
+
+    openModal('rowDetailModal');
+}
+
+/* ── Deploy Row click → Details modal ── */
+function openDeployDetails(row) {
+    if (event.target.closest('.action-wrap')) return;
+
+    const rawJson = row.dataset.detail
+        .replace(/&amp;/g,  '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g,  "'")
+        .replace(/&lt;/g,   '<')
+        .replace(/&gt;/g,   '>');
+
+    const data = JSON.parse(rawJson);
+
+    const badgeEl = document.getElementById('rdBadge');
+    badgeEl.textContent = data.status || 'Deployed';
+    badgeEl.className   = 'badge badge-Deployed';
+
+    const initials = (data.name || '?').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    document.getElementById('rdAvatar').textContent       = initials;
+    document.getElementById('rdTitle').textContent        = 'Deployment Details';
+    document.getElementById('rdName').textContent         = data.name        || '—';
+    document.getElementById('rdDept').textContent         = data.dept        || '—';
+    document.getElementById('rdSerial').textContent       = data.serial      || '—';
+    document.getElementById('rdDeptBox').textContent      = data.dept        || '—';
+    document.getElementById('rdDateBorrowed').textContent = data.date_deployed || '—';
+    document.getElementById('rdDateReturned').textContent = '—';
+    document.getElementById('rdReceivedBy').textContent   = data.deployed_by || '—';
+
+    const list = document.getElementById('rdItemsList');
+    list.innerHTML = '';
+    const row2 = document.createElement('div');
+    row2.className = 'detail-item-row';
+    row2.innerHTML = `
+    <span class="detail-item-name">${escHtml(data.device || '—')}</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+        <span class="detail-returned-tag" style="background:#ede9fe;color:#6d28d9;">Deployed</span>
+    </div>`;
+    list.appendChild(row2);
+
+    openModal('rowDetailModal');
+}
+
+/* ── Export CSV ── */
+function exportCSV() {
+    const tab = '@Model.ActiveTab';
+    let headers, rows;
+
+    if (tab === 'deployed') {
+        headers = ['date_deployed','name','department','device','serial_number','deployed_by','status'];
+        rows = [headers];
+        document.querySelectorAll('#borrowTable tbody tr[data-detail]').forEach(tr => {
+            if (tr.style.display === 'none') return;
+            try {
+                const d = JSON.parse(decodeDetail(tr.dataset.detail));
+                rows.push([
+                    csvCell(d.date_deployed), csvCell(d.name),       csvCell(d.dept),
+                    csvCell(d.device),        csvCell(d.serial),      csvCell(d.deployed_by),
+                    csvCell(d.status)
+                ]);
+            } catch(e) {}
+        });
+    } else {
+        headers = ['date_borrowed','borrower_name','department','serial_number','status','date_returned','received_by','items'];
+        rows = [headers];
+        document.querySelectorAll('#borrowTable tbody tr[data-detail]').forEach(tr => {
+            if (tr.style.display === 'none') return;
+            try {
+                const d = JSON.parse(decodeDetail(tr.dataset.detail));
+                const itemsSummary = (d.items || []).map(i => i.name + ' x' + i.qty).join(' | ');
+                rows.push([
+                    csvCell(d.date_borrowed), csvCell(d.name),          csvCell(d.dept),
+                    csvCell(d.serial),        csvCell(d.status),         csvCell(d.date_returned),
+                    csvCell(d.received_by),   csvCell(itemsSummary)
+                ]);
+            } catch(e) {}
+        });
+    }
+
+    const csv = rows.map(r => r.join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv,' + encodeURIComponent(csv);
+    a.download = tab + '_export.csv';
+    a.click();
+}
+
+function decodeDetail(str) {
+    return str.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+}
+function csvCell(v) {
+    const s = String(v || '');
+    return (s.includes(',') || s.includes('"') || s.includes('\n')) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+
+/* ── Import CSV ── */
+var _importParsedRows = [], _importTab = '';
+var _importCols = {
+    borrowed: ['date_borrowed','borrower_name','department','serial_number','status','items'],
+    returned: ['date_borrowed','borrower_name','department','serial_number','date_returned','received_by','items'],
+    deployed: ['date_deployed','name','department','serial_number','device','deployed_by']
+};
+var _importHints = {
+    borrowed: 'Required: <strong>borrower_name</strong>, <strong>date_borrowed</strong>. Optional: department, serial_number, status, items (format: "Item1 x2 | Item2 x1").',
+    returned: 'Required: <strong>borrower_name</strong>, <strong>date_borrowed</strong>. Optional: department, serial_number, date_returned, received_by, items.',
+    deployed: 'Required: <strong>name</strong>, <strong>date_deployed</strong>, <strong>device</strong>. Optional: department, serial_number, deployed_by.'
+};
+var _importActions = {
+    borrowed: '/Borrowing/ImportBorrowed',
+    returned: '/Borrowing/ImportReturned',
+    deployed: '/Borrowing/ImportDeployed'
+};
+
+function openImportModal() {
+    _importTab = '@Model.ActiveTab';
+    document.getElementById('importTabLabel').textContent = _importTab.charAt(0).toUpperCase() + _importTab.slice(1);
+    document.getElementById('importHint').innerHTML = (_importHints[_importTab] || '') + ' <a href="#" onclick="downloadImportTemplate();return false;" style="color:#25671E;font-weight:700;">Download template</a>';
+    document.getElementById('importStep1').style.display = '';
+    document.getElementById('importStep2').style.display = 'none';
+    document.getElementById('importPreviewBtn').style.display = 'none';
+    document.getElementById('importSubmitForm').style.display = 'none';
+    document.getElementById('importFileInput').value = '';
+    document.getElementById('importFileError').style.display = 'none';
+    document.getElementById('importSubmitForm').action = _importActions[_importTab] || '/Borrowing/ImportBorrowed';
+    document.getElementById('importTabInput').value = _importTab;
+    _importParsedRows = [];
+    openModal('importModal');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const fi = document.getElementById('importFileInput');
+    if (!fi) return;
+    fi.addEventListener('change', function() {
+        const errEl = document.getElementById('importFileError');
+        const prevBtn = document.getElementById('importPreviewBtn');
+        if (!this.files || !this.files[0]) { prevBtn.style.display = 'none'; return; }
+        if (!this.files[0].name.toLowerCase().endsWith('.csv')) {
+            errEl.textContent = 'Please select a .csv file.';
+            errEl.style.display = 'block';
+            prevBtn.style.display = 'none'; return;
+        }
+        errEl.style.display = 'none';
+        prevBtn.style.display = '';
+    });
+});
+
+function previewImport() {
+    const file = document.getElementById('importFileInput').files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+        const parsed = parseCSV(e.target.result);
+        if (parsed.length < 2) {
+            document.getElementById('importFileError').textContent = 'CSV is empty or has no data rows.';
+            document.getElementById('importFileError').style.display = 'block'; return;
+        }
+        const headerRow = parsed[0].map(h => h.trim().toLowerCase().replace(/\s+/g,'_'));
+        const dataRows  = parsed.slice(1);
+        _importParsedRows = [];
+        let skipped = 0;
+
+        dataRows.forEach(function(row) {
+            const obj = {};
+            headerRow.forEach((h, i) => obj[h] = (row[i] || '').trim());
+
+            // validate required fields per tab
+            if (_importTab === 'deployed') {
+                if (!obj.name || !obj.date_deployed || !obj.device) { skipped++; return; }
+            } else {
+                if (!obj.borrower_name || !obj.date_borrowed) { skipped++; return; }
+            }
+            if (!['Borrowed','Returned','Overdue'].includes(obj.status)) obj.status = 'Borrowed';
+            _importParsedRows.push(obj);
+        });
+
+        // Show error if nothing parsed at all
+        if (_importParsedRows.length === 0) {
+            const errEl = document.getElementById('importFileError');
+            errEl.innerHTML = 'No valid rows found. Make sure your CSV has the correct column headers.<br>'
+                + '<strong>Detected headers:</strong> ' + headerRow.join(', ') + '<br>'
+                + (skipped > 0 ? '<strong>' + skipped + ' row(s)</strong> were skipped due to missing required fields.' : '');
+            errEl.style.display = 'block';
+            return;
+        }
+
+        const cols = _importCols[_importTab] || [];
+        document.getElementById('importStep1').style.display = 'none';
+        document.getElementById('importStep2').style.display = '';
+        document.getElementById('importPreviewBtn').style.display = 'none';
+        document.getElementById('importSubmitForm').style.display = '';
+        document.getElementById('importSubmitBtn').textContent = 'Import ' + _importParsedRows.length + ' Row(s)';
+        document.getElementById('importRowsJson').value = JSON.stringify(_importParsedRows);
+        document.getElementById('importSummaryBar').innerHTML =
+            '<strong>' + _importParsedRows.length + '</strong> valid row(s) ready to import' +
+            (skipped > 0 ? ' &nbsp;·&nbsp; <span style="color:#c81e1e;">' + skipped + ' skipped (missing required fields)</span>' : '');
+
+        document.getElementById('importPreviewHead').innerHTML =
+            '<tr>' + cols.map(c => '<th style="text-align:left;padding:8px 12px;font-size:.63rem;font-weight:700;color:#555;text-transform:uppercase;border-bottom:1.5px solid #eef0f6;background:#fff;">' + c + '</th>').join('') + '</tr>';
+
+        document.getElementById('importPreviewBody').innerHTML =
+            _importParsedRows.slice(0, 50).map(r =>
+                '<tr>' + cols.map(c => '<td style="padding:8px 12px;font-size:.73rem;border-bottom:1px solid #f2f4fb;">' + escHtml(r[c] || '—') + '</td>').join('') + '</tr>'
+            ).join('');
+} catch(err) {
+            document.getElementById('importFileError').textContent = 'Failed to parse CSV: ' + err.message;
+            document.getElementById('importFileError').style.display = 'block';
+        }
+    };
+reader.readAsText(file);
+}
+
+function parseCSV(text) {
+    var rows=[],cur=[],field='',inQ=false;
+    for(var i=0;i<text.length;i++){var c=text[i];
+        if(inQ){if(c==='"'){if(text[i+1]==='"'){field+='"';i++;}else inQ=false;}else field+=c;}
+        else{if(c==='"')inQ=true;else if(c===','){cur.push(field);field='';}
+        else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;cur.push(field);field='';if(cur.some(v=>v.trim()))rows.push(cur);cur=[];}
+        else field+=c;}}
+    if(field||cur.length){cur.push(field);if(cur.some(v=>v.trim()))rows.push(cur);}
+    return rows;
+}
+
+function downloadImportTemplate() {
+    const templates = {
+        borrowed: 'borrower_name,department,serial_number,date_borrowed,status,items\nJohn Smith,IT Department,SN-001,2024-01-15,Borrowed,Laptop x1 | Mouse x2\n',
+        returned: 'borrower_name,department,serial_number,date_borrowed,date_returned,received_by,items\nJohn Smith,IT Department,SN-001,2024-01-15,2024-01-20,Maria Santos,Laptop x1\n',
+        deployed: 'name,department,serial_number,device,date_deployed,deployed_by\nJohn Smith,Engineering,SN-001,Dell Latitude 7420,2024-01-15,Maria Santos\n'
+    };
+    const csv = templates[_importTab] || templates.borrowed;
+    const a = document.createElement('a');
+    a.href = 'data:text/csv,' + encodeURIComponent(csv);
+    a.download = _importTab + '_import_template.csv';
+    a.click();
+}
+</script>
+}

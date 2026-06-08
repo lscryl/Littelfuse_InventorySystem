@@ -1,0 +1,135 @@
+﻿@* ============================================================
+   File: Views/Shared/_Layout.cshtml
+   Purpose: Master layout for all pages AFTER login.
+            Includes the sidebar automatically on every page.
+            Replaces PHP: <?php include 'sidebar.php'; ?>
+   ============================================================ *@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] – IT Office Inventory</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --green-dark:  #1a4d14;
+            --green-mid:   #25671E;
+            --green-light: #48A111;
+            --green-pale:  #e8f5e2;
+            --bg:          #f0f2f8;
+            --card:        #ffffff;
+            --text:        #111;
+            --muted:       #888;
+            --border:      #dde2ef;
+            --sidebar-w:   240px;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            display: flex;
+            min-height: 100vh;
+            color: var(--text);
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: linear-gradient(180deg, var(--green-dark) 0%, var(--green-mid) 100%);
+            color: #fff;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            padding: 0;
+            z-index: 100;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            padding: 24px 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,.1);
+            margin-bottom: 8px;
+        }
+
+        .sidebar-logo {
+            height: 36px;
+            margin-bottom: 10px;
+        }
+
+        .sidebar-brand h1 {
+            font-size: .85rem;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.3;
+        }
+
+        .sidebar-brand p {
+            font-size: .68rem;
+            color: rgba(255,255,255,.55);
+            margin-top: 2px;
+        }
+
+        .sidebar-nav {
+            padding: 8px 12px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: rgba(255,255,255,.75);
+            text-decoration: none;
+            font-size: .82rem;
+            font-weight: 500;
+            transition: background .2s, color .2s;
+            margin-bottom: 2px;
+        }
+
+        .nav-item svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,.12);
+            color: #fff;
+        }
+
+        .nav-item.active {
+            background: rgba(255,255,255,.18);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        /* ── Main Content ── */
+.main-content {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+    </style>
+</head>
+<body>
+
+    @* Include Sidebar Partial View — replaces PHP include 'sidebar.php' *@
+    @await Html.PartialAsync("_Sidebar")
+
+    <div class="main-content">
+        @* RenderBody() outputs the content of each individual page *@
+        @RenderBody()
+    </div>
+
+    @* RenderSection allows pages to add their own scripts *@
+    @await RenderSectionAsync("Scripts", required: false)
+
+</body>
+</html>

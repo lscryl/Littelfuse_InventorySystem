@@ -1,0 +1,1350 @@
+@model ITInventorySystem.Models.ResignedViewModel
+
+@{
+    ViewData["Title"] = "Resigned";
+    var tab    = Model.ActiveTab;
+    var isHist = tab == "history";
+}
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+.main{flex:1;padding:24px 44px;overflow:hidden;display:flex;flex-direction:column;min-height:0;height:100vh}
+.page-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px;flex-shrink:0;border-bottom:2px solid #e4e7f0;padding-bottom:0}
+.page-header h2{font-size:1.65rem;font-weight:700;color:#111;padding-bottom:0}
+.tabs-bar{display:flex;align-items:center}
+.tab-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;font-size:.75rem;font-weight:600;font-family:'Segoe UI',Arial,sans-serif;color:#888;background:none;border:none;border-bottom:2.5px solid transparent;margin-bottom:-2px;cursor:pointer;text-decoration:none;white-space:nowrap;transition:color .18s,border-color .18s}
+.tab-btn svg{width:14px;height:14px;flex-shrink:0}
+.tab-btn:hover{color:#25671E}
+.tab-btn.active{color:#25671E;border-bottom-color:#25671E}
+.tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:18px;padding:0 6px;border-radius:9px;font-size:.62rem;font-weight:700;background:#eef0f6;color:#777;transition:background .18s,color .18s}
+.tab-btn.active .tab-count{background:#d6edcf;color:#1d5618}
+.history-tab.active .tab-count{background:#f0ebff;color:#6d28d9}
+.history-tab.active{color:#6d28d9;border-bottom-color:#6d28d9}
+.toolbar{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-shrink:0}
+.search-wrap{flex:1;position:relative}
+.search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:#999;pointer-events:none}
+.search-wrap input{width:100%;padding:11px 14px 11px 42px;border:1.5px solid #dde2ef;border-radius:10px;font-size:.75rem;background:#fff;color:#222;outline:none;transition:border-color .18s;font-family:'Segoe UI',Arial,sans-serif}
+.search-wrap input:focus{border-color:#25671E}
+.btn-new{display:inline-flex;align-items:center;gap:7px;background:#25671E;color:#fff;border:none;padding:11px 22px;border-radius:10px;font-size:.75rem;font-weight:600;font-family:'Segoe UI',Arial,sans-serif;cursor:pointer;white-space:nowrap;transition:background .18s}
+.btn-new:hover{background:#48A111}
+.table-card{background:#fff;border-radius:14px;box-shadow:0 1px 6px rgba(0,0,0,.07);display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.table-scroll{overflow:auto;flex:1}
+table{width:100%;border-collapse:collapse;min-width:600px}
+thead th{text-align:left;padding:14px 18px;font-size:.65rem;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.5px solid #eef0f6;background:#fff;position:sticky;top:0;z-index:1}
+tbody tr{border-bottom:1px solid #f2f4fb;transition:background .14s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#f7f9ff}
+tbody tr.clickable-row{cursor:pointer}
+td{padding:14px 18px;font-size:.75rem;vertical-align:top}
+.emp-name{font-weight:600;color:#111;font-size:.78rem}
+.emp-sub{font-size:.7rem;color:#888;margin-top:2px}
+.former-tag{font-size:.65rem;color:#aaa;margin-top:3px;font-style:italic}
+.model-txt{color:#333;font-size:.75rem}
+.serial-txt{font-family:monospace;font-size:.72rem;color:#555}
+.acc-txt{font-size:.72rem;color:#555;max-width:160px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.date-txt{font-size:.75rem;color:#333}
+.no-data{color:#ccc;font-size:.75rem}
+.badge-resigned{display:inline-block;padding:4px 13px;border-radius:20px;font-size:.6rem;font-weight:600;background:#fde8e8;color:#c81e1e}
+.badge-deployed{display:inline-block;padding:4px 13px;border-radius:20px;font-size:.6rem;font-weight:600;background:#e8f0fe;color:#1a56db}
+.action-wrap{position:relative;display:inline-block}
+.btn-dots{background:none;border:none;cursor:pointer;padding:6px 8px;border-radius:6px;color:#666;display:inline-flex;align-items:center;justify-content:center;transition:background .15s,color .15s}
+.btn-dots:hover{background:#eef0fb;color:#333}
+.btn-dots svg{width:18px;height:18px}
+.dropdown-menu{display:none;position:fixed;background:#fff;border:1.5px solid #eef0f6;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:170px;z-index:200;overflow:hidden}
+.dropdown-menu.open{display:block}
+.dropdown-item{display:flex;align-items:center;gap:10px;padding:10px 16px;font-size:.65rem;font-weight:500;color:#333;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background .13s;font-family:'Segoe UI',Arial,sans-serif}
+.dropdown-item:hover{background:#f4f6fb}
+.dropdown-item svg{width:15px;height:15px;flex-shrink:0;color:#666}
+.dropdown-item.item-history svg{color:#6d28d9}
+.dropdown-item.item-history{color:#6d28d9}
+.dropdown-item.item-deploy{color:#1a56db}
+.dropdown-item.item-deploy svg{color:#1a56db}
+.dropdown-item.item-back{color:#0e9a4a}
+.dropdown-item.item-back svg{color:#0e9a4a}
+.dropdown-item.item-edit{color:#25671E}
+.dropdown-item.item-edit svg{color:#25671E}
+.dropdown-item.item-delete{color:#c81e1e}
+.dropdown-item.item-delete svg{color:#c81e1e}
+.dropdown-divider{height:1px;background:#eef0f6;margin:4px 0}
+.empty-row td{text-align:center;color:#aaa;padding:40px;font-size:.8rem}
+.pagination-bar{display:none;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid #eef0f6;flex-shrink:0}
+.pagination-info{font-size:.72rem;color:#888}
+.pagination-btns{display:flex;gap:4px}
+.page-btn{min-width:32px;height:32px;padding:0 8px;border-radius:7px;border:1.5px solid #dde2ef;background:#fff;color:#555;font-size:.72rem;font-weight:600;cursor:pointer;transition:background .15s,color .15s;display:inline-flex;align-items:center;justify-content:center}
+.page-btn:hover:not(:disabled){background:#f4f6fb}
+.page-btn.active{background:#25671E;color:#fff;border-color:#25671E}
+.page-btn:disabled{opacity:.4;cursor:default}
+
+/* ── History panel ── */
+.history-panel{padding:0;flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.history-search-bar{padding:16px 20px 12px;border-bottom:1.5px solid #eef0f6;flex-shrink:0}
+.history-search-bar input{width:100%;padding:10px 14px 10px 40px;border:1.5px solid #dde2ef;border-radius:8px;font-size:.75rem;font-family:'Segoe UI',Arial,sans-serif;color:#222;outline:none;background:#f8f9fe;transition:border-color .18s}
+.history-search-bar input:focus{border-color:#6d28d9;background:#fff}
+.history-search-wrap{position:relative}
+.history-search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:#999;pointer-events:none}
+.history-scroll{overflow-y:auto;flex:1;padding:20px 24px}
+.history-empty{text-align:center;padding:60px 20px;color:#bbb;font-size:.9rem}
+.history-filter-row{display:flex;align-items:center;gap:10px;padding:10px 20px 0;flex-shrink:0;flex-wrap:wrap}
+.hf-label{font-size:.65rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.04em}
+.hf-chip{padding:5px 13px;border-radius:20px;border:1.5px solid #eef0f6;background:#fff;font-size:.65rem;font-weight:600;color:#888;cursor:pointer;font-family:'Segoe UI',Arial,sans-serif;transition:all .15s}
+.hf-chip:hover{border-color:#6d28d9;color:#6d28d9}
+.hf-chip.active{background:#f5f3ff;border-color:#6d28d9;color:#6d28d9}
+/* Timeline */
+.timeline{position:relative;padding-left:36px}
+.timeline::before{content:'';position:absolute;left:14px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,#e8e0fa,#eef0f6);border-radius:2px}
+.tl-date-group{margin-bottom:28px}
+.tl-date-label{font-size:.65rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;padding-left:4px}
+.tl-item{position:relative;margin-bottom:10px;background:#fff;border:1.5px solid #eef0f6;border-radius:12px;padding:14px 16px;transition:box-shadow .18s,border-color .18s}
+.tl-item:hover{box-shadow:0 4px 16px rgba(0,0,0,.08);border-color:#e0d9f7}
+.tl-dot{position:absolute;left:-29px;top:16px;width:12px;height:12px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 0 0 2px currentColor;flex-shrink:0}
+.tl-dot.created{color:#0e9a4a;background:#0e9a4a}
+.tl-dot.edited{color:#6d28d9;background:#6d28d9}
+.tl-dot.deployed{color:#1a56db;background:#1a56db}
+.tl-dot.backtoinventory{color:#0e9a4a;background:#0e9a4a}
+.tl-dot.deleted{color:#c81e1e;background:#c81e1e}
+.tl-dot.default{color:#aaa;background:#aaa}
+.tl-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px}
+.tl-action-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.6rem;font-weight:700;white-space:nowrap}
+.tl-action-badge.created{background:#e3fbec;color:#0e9a4a}
+.tl-action-badge.edited{background:#f5f3ff;color:#6d28d9}
+.tl-action-badge.deployed{background:#e8f0fe;color:#1a56db}
+.tl-action-badge.backtoinventory{background:#e3fbec;color:#0e9a4a}
+.tl-action-badge.deleted{background:#fde8e8;color:#c81e1e}
+.tl-action-badge.default{background:#f2f4fb;color:#888}
+.tl-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.tl-asset-label{font-size:.68rem;font-weight:700;color:#111}
+.tl-asset-sub{font-size:.65rem;color:#888}
+.tl-time{font-size:.65rem;color:#aaa;white-space:nowrap;flex-shrink:0}
+.tl-actor{display:inline-flex;align-items:center;gap:5px;font-size:.65rem;color:#888;background:#f4f6fb;padding:2px 8px;border-radius:10px;margin-top:4px}
+.tl-actor svg{width:11px;height:11px;color:#aaa}
+.tl-details{font-size:.72rem;color:#555;line-height:1.5;margin-top:6px;padding-top:6px;border-top:1px solid #f2f4fb}
+.rec-hist-scroll{max-height:420px;overflow-y:auto}
+.rec-hist-loading{text-align:center;padding:30px;color:#aaa;font-size:.85rem}
+.rec-hist-header{display:flex;align-items:center;gap:12px;background:#f5f3ff;border:1.5px solid #e0d9f7;border-radius:10px;padding:14px 16px;margin-bottom:20px}
+.rec-hist-header svg{width:20px;height:20px;color:#6d28d9;flex-shrink:0}
+.rec-hist-header-info .rhi-model{font-size:.85rem;font-weight:700;color:#111}
+.rec-hist-header-info .rhi-sub{font-size:.7rem;color:#777;margin-top:2px}
+
+/* ── Modals ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal,.modal-sm{background:#fff;border-radius:16px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.modal{width:580px}
+.modal-sm{width:460px}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:24px 32px 16px;border-bottom:1.5px solid #eef0f6}
+.modal-header h3{font-size:1rem;font-weight:700;color:#111}
+.modal-close{background:none;border:none;cursor:pointer;color:#aaa;padding:4px;border-radius:6px;transition:color .15s;display:flex}
+.modal-close:hover{color:#333}
+.modal-close svg{width:20px;height:20px}
+.modal-body{padding:24px 32px 8px}
+.modal-footer{padding:18px 32px 26px;display:flex;justify-content:flex-end;gap:10px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:.7rem;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 14px;border:1.5px solid #dde2ef;border-radius:8px;font-size:.78rem;font-family:'Segoe UI',Arial,sans-serif;color:#222;background:#fafbff;outline:none;transition:border-color .18s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#25671E}
+.form-group textarea{resize:vertical;min-height:72px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.required{color:#c81e1e;margin-left:2px}
+.btn-cancel{padding:10px 22px;border-radius:8px;border:1.5px solid #dde2ef;background:#fff;color:#555;font-size:.75rem;font-weight:600;font-family:'Segoe UI',Arial,sans-serif;cursor:pointer;transition:background .15s}
+.btn-cancel:hover{background:#f4f6fb}
+.btn-submit{padding:10px 26px;border-radius:8px;border:none;background:#25671E;color:#fff;font-size:.75rem;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;cursor:pointer;transition:background .18s}
+.btn-submit:hover{background:#48A111}
+.btn-danger{padding:10px 22px;border-radius:8px;border:none;background:#c81e1e;color:#fff;font-size:.75rem;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;cursor:pointer;transition:background .18s}
+.btn-danger:hover{background:#a81818}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;background:#ccc}
+.status-dot.resigned{background:#c81e1e}
+.status-dot.deployed{background:#1a56db}
+.deployed-fields-wrap{background:#f4fbf2;border:1.5px solid #c8e6c0;border-radius:10px;padding:16px;margin-top:8px}
+.deployed-fields-label{font-size:.68rem;font-weight:700;color:#25671E;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.deploy-info-card{display:flex;align-items:center;gap:14px;background:#f5f3ff;border:1.5px solid #e0d9f7;border-radius:12px;padding:16px 18px;margin-bottom:20px}
+.deploy-info-card svg{width:22px;height:22px;color:#6d28d9;flex-shrink:0}
+.di-model{font-size:.88rem;font-weight:700;color:#111}
+.di-serial{font-size:.72rem;color:#888;margin-top:2px}
+.di-former{font-size:.72rem;color:#777;margin-top:4px}
+.view-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.view-field{background:#f8f9fe;border:1.5px solid #eef0f6;border-radius:10px;padding:13px 16px}
+.view-field.full{grid-column:1/-1}
+.view-field label{font-size:.62rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px}
+.view-field span,.view-notes{font-size:.78rem;font-weight:600;color:#222}
+.view-notes{white-space:pre-wrap;font-weight:400}
+.dv-header{display:flex;align-items:center;gap:14px;background:#f4fbf2;border:1.5px solid #c8e6c0;border-radius:12px;padding:16px 18px;margin-bottom:18px}
+.dv-avatar{width:44px;height:44px;border-radius:50%;background:#1a56db;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;flex-shrink:0}
+.dv-name{font-size:.9rem;font-weight:700;color:#111}
+.dv-dept{font-size:.7rem;color:#666;margin-top:2px}
+.dv-former-box{display:flex;align-items:flex-start;gap:12px;background:#fafbff;border:1.5px solid #eef0f6;border-radius:10px;padding:13px 16px;margin-bottom:16px}
+.dv-former-box svg{width:18px;height:18px;color:#aaa;flex-shrink:0;margin-top:2px}
+.dv-former-label{font-size:.62rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.dv-former-name{font-size:.78rem;font-weight:600;color:#333}
+.dv-former-dept{font-size:.7rem;color:#888;margin-top:1px}
+.detail-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px}
+.detail-meta-box{background:#f8f9fe;border:1.5px solid #eef0f6;border-radius:10px;padding:13px 16px}
+.detail-meta-box.full{grid-column:1/-1}
+.detail-meta-label{font-size:.62rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.detail-meta-value{font-size:.78rem;font-weight:600;color:#222}
+.detail-meta-value.blue{color:#1a56db}
+.detail-meta-value.light{font-weight:400;color:#555}
+.confirm-modal{background:#fff;border-radius:14px;width:360px;max-width:96vw;padding:28px;box-shadow:0 16px 48px rgba(0,0,0,.16);text-align:center}
+.confirm-modal .del-icon{width:52px;height:52px;border-radius:50%;background:#fde8e8;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.confirm-modal .del-icon svg{width:26px;height:26px;color:#c81e1e}
+.confirm-modal .inv-icon{width:52px;height:52px;border-radius:50%;background:#e3fbec;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.confirm-modal .inv-icon svg{width:26px;height:26px;color:#0e9a4a}
+.confirm-modal h3{font-size:1rem;font-weight:700;color:#111;margin-bottom:8px}
+.confirm-modal p{font-size:.75rem;color:#666;margin-bottom:22px}
+.confirm-modal-btns{display:flex;justify-content:center;gap:10px}
+.toast{position:fixed;bottom:28px;right:28px;display:flex;align-items:center;gap:12px;padding:14px 20px;border-radius:12px;background:#222;color:#fff;font-size:.78rem;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:9999;transform:translateY(80px);opacity:0;transition:transform .3s ease,opacity .3s ease;min-width:240px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast svg{width:18px;height:18px;flex-shrink:0}
+.toast-success{background:#1c6b34}
+.toast-error{background:#c81e1e}
+.page-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 12px;
+}
+.page-title svg {
+    width: 22px;
+    height: 22px;
+    color: #000000;
+    flex-shrink: 0;
+}
+.page-title h2 {
+    padding-bottom: 0;
+}
+.btn-outline{display:inline-flex;align-items:center;gap:7px;background:#fff;color:#444;border:1.5px solid #dde2ef;padding:11px 18px;border-radius:10px;font-size:.75rem;font-weight:600;font-family:'Segoe UI',Arial,sans-serif;cursor:pointer;white-space:nowrap;transition:background .18s,border-color .18s}
+.btn-outline:hover{background:#f4f6fb;border-color:#c8cce0}
+</style>
+
+<div class="main">
+
+    @* ── PAGE HEADER + TABS ── *@
+    <div class="page-header">
+        <div class="page-title">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <h2>Resigned</h2>
+        </div>
+        <div class="tabs-bar">
+            <a href="@Url.Action("Index","Resigned", new{tab="resigned"})"
+               class="tab-btn @(tab=="resigned"?"active":"")">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                Resigned <span class="tab-count">@Model.CountResigned</span>
+            </a>
+            <a href="@Url.Action("Index","Resigned", new{tab="deployed"})"
+               class="tab-btn @(tab=="deployed"?"active":"")">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M5 8h14M5 8a2 2 0 1 0 0-4h14a2 2 0 1 0 0 4M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/>
+                    <path d="M10 12h4M12 10v4"/>
+                </svg>
+                Deployed <span class="tab-count">@Model.CountDeployed</span>
+            </a>
+            <a href="@Url.Action("Index","Resigned", new{tab="history"})"
+               class="tab-btn history-tab @(tab=="history"?"active":"")">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                History <span class="tab-count">@Model.CountHistory</span>
+            </a>
+        </div>
+    </div>
+
+    @* ── TOOLBAR ── *@
+    @if (!isHist)
+    {
+        <div class="toolbar">
+            <div class="search-wrap">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input type="text" id="searchInput"
+                       placeholder="@(tab=="deployed" ? "Search by current user, former user, model or serial tag..." : "Search by employee, department, model or serial tag...")"
+                       value="@Model.Search"
+                       onkeyup="liveSearch(this.value)">
+            </div>
+            <button class="btn-outline" onclick="exportResignedCSV()">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export CSV
+            </button>
+            <button class="btn-outline" onclick="openImportResignedModal()">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Import CSV
+            </button>
+            <button class="btn-new" onclick="openAddModal()">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Add Record
+            </button>
+        </div>
+    }
+
+    @* ── TABLE CARD ── *@
+    <div class="table-card">
+
+        @if (isHist)
+        {
+            @* ── HISTORY PANEL ── *@
+            <div class="history-panel">
+                <div class="history-search-bar">
+                    <div class="history-search-wrap">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                        </svg>
+                        <input type="text" id="histSearchInput"
+                               placeholder="Search history by action, user, asset, serial tag..."
+                               oninput="filterHistory(this.value)">
+                    </div>
+                </div>
+                <div class="history-filter-row" id="histFilterRow">
+                    <span class="hf-label">Filter:</span>
+                    <button class="hf-chip active" onclick="setHistFilter('all',this)">All</button>
+                    <button class="hf-chip" onclick="setHistFilter('Record Created',this)">Created</button>
+                    <button class="hf-chip" onclick="setHistFilter('Record Edited',this)">Edited</button>
+                    <button class="hf-chip" onclick="setHistFilter('Asset Deployed',this)">Deployed</button>
+                    <button class="hf-chip" onclick="setHistFilter('Back to Inventory',this)">Back to Inventory</button>
+                    <button class="hf-chip" onclick="setHistFilter('Record Deleted',this)">Deleted</button>
+                </div>
+                <div class="history-scroll" id="historyScrollArea">
+                    <div class="rec-hist-loading">Loading history…</div>
+                </div>
+            </div>
+        }
+        else
+        {
+            @* ── TABLE: RESIGNED / DEPLOYED ── *@
+            <div class="table-scroll">
+                <table id="resTable">
+                    <thead>
+                        <tr>
+                            <th>@(tab == "deployed" ? "Current User" : "Former User")</th>
+                            <th>Model</th>
+                            <th>Serial Tag</th>
+                            <th>Accessories</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.Records.Any())
+                        {
+                            <tr class="empty-row"><td colspan="7">No @tab records found.</td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var r in Model.Records)
+                            {
+                                var rowId   = $"res-dropdown-{r.Id}";
+                                var rowData = System.Text.Json.JsonSerializer.Serialize(new {
+                                    id                = r.Id,
+                                    employee_name     = r.EmployeeName,
+                                    department        = r.Department,
+                                    model             = r.Model,
+                                    serial_tag        = r.SerialTag,
+                                    accessories       = r.Accessories,        // ← must be here
+                                    date_of_clearance = r.DateOfClearance ?? "",
+                                    notes             = r.Notes,
+                                    asset_status      = r.AssetStatus,
+                                    deployed_to       = r.DeployedTo,
+                                    deployed_dept     = r.DeployedDept,
+                                    deployed_notes    = r.DeployedNotes,
+                                    deployed_at       = r.DeployedAt ?? ""
+                                });
+
+                                        <tr class="clickable-row" data-row='@Html.Raw(rowData.Replace("'", "&#39;"))'>
+                                            <td>
+                                        @if (r.IsDeployed)
+                                        {
+                                            <div class="emp-name">@r.DeployedTo</div>
+                                            @if (!string.IsNullOrEmpty(r.DeployedDept))
+                                            {
+                                                <div class="emp-sub">@r.DeployedDept</div>
+                                            }
+                                            <div class="former-tag">formerly: @r.EmployeeName</div>
+                                        }
+                                        else
+                                        {
+                                            <div class="emp-name">@r.EmployeeName</div>
+                                            @if (!string.IsNullOrEmpty(r.Department))
+                                            {
+                                                <div class="emp-sub">@r.Department</div>
+                                            }
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(r.Model))
+                                        { <span class="model-txt">@r.Model</span> }
+                                        else
+                                        { <span class="no-data">—</span> }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(r.SerialTag))
+                                        { <span class="serial-txt">@r.SerialTag</span> }
+                                        else
+                                        { <span class="no-data">—</span> }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(r.Accessories))
+                                        { <span class="acc-txt" title="@r.Accessories">@r.Accessories</span> }
+                                        else
+                                        { <span class="no-data">—</span> }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(r.DisplayDate))
+                                        { <span class="date-txt">@r.DisplayDate</span> }
+                                        else
+                                        { <span class="no-data">Not set</span> }
+                                    </td>
+                                    <td>
+                                        @if (r.IsDeployed)
+                                        { <span class="badge-deployed">Deployed</span> }
+                                        else
+                                        { <span class="badge-resigned">Resigned</span> }
+                                    </td>
+                                    <td onclick="event.stopPropagation()">
+                                        <div class="action-wrap">
+                                            <button class="btn-dots" onclick="toggleDropdown('@rowId',event)">
+                                                <svg fill="currentColor" viewBox="0 0 24 24">
+                                                    <circle cx="12" cy="5" r="1.5"/>
+                                                    <circle cx="12" cy="12" r="1.5"/>
+                                                    <circle cx="12" cy="19" r="1.5"/>
+                                                </svg>
+                                            </button>
+                                            <div class="dropdown-menu" id="@rowId">
+                                                <button class="dropdown-item item-history"
+                                                    onclick="closeAllDropdowns();openRecordHistory(getRowData(this))">
+                                                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                                    </svg>
+                                                    View History
+                                                </button>
+                                                <div class="dropdown-divider"></div>
+                                                @if (!r.IsDeployed)
+                                                {
+                                                     <button class="dropdown-item item-deploy"
+                                                        onclick="closeAllDropdowns();openDeployModal(getRowData(this))">   
+                                                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                            <path d="M5 8h14M5 8a2 2 0 1 0 0-4h14a2 2 0 1 0 0 4M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/>
+                                                            <path d="M10 12h4M12 10v4"/>
+                                                        </svg>
+                                                        Deploy Asset
+                                                    </button>
+                                                    <div class="dropdown-divider"></div>
+                                                }
+                                                else
+                                                {
+                                                    <button class="dropdown-item item-back"
+                                                        onclick="closeAllDropdowns();confirmBackToInventory(getRowData(this))">
+                                                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                                            <polyline points="9 22 9 12 15 12 15 22"/>
+                                                        </svg>
+                                                        Back to Inventory
+                                                    </button>
+                                                    <div class="dropdown-divider"></div>
+                                                }
+                                                    <button class="dropdown-item item-edit"
+                                                        onclick="closeAllDropdowns();openEditModal(getRowData(this))">
+                                                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                                    </svg>
+                                                    Edit Record
+                                                </button>
+                                                <div class="dropdown-divider"></div>
+                                                    <button class="dropdown-item item-delete"
+                                                        onclick="closeAllDropdowns();openDeleteModal(getRowData(this))">
+                                                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                        <polyline points="3 6 5 6 21 6"/>
+                                                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                                        <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                                    </svg>
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-bar" id="paginationBar">
+                <span class="pagination-info" id="paginationInfo"></span>
+                <div class="pagination-btns" id="paginationBtns"></div>
+            </div>
+        }
+    </div>
+</div>
+
+@* ══ ADD MODAL ══ *@
+<div class="modal-overlay" id="addModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Add Resigned Record</h3>
+            <button class="modal-close" onclick="closeModal('addModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form method="post" action="/Resigned/Add">
+            @Html.AntiForgeryToken()
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Employee Name <span class="required">*</span></label>
+                        <input type="text" name="employee_name" placeholder="e.g. Juan Dela Cruz" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Department</label>
+                        <input type="text" name="department" placeholder="e.g. Accounting">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Model</label>
+                        <input type="text" name="model" placeholder="e.g. Dell Latitude E7450">
+                    </div>
+                    <div class="form-group">
+                        <label>Serial Tag</label>
+                        <input type="text" name="serial_tag" placeholder="e.g. SN-00123">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Accessories Included</label>
+                    <textarea name="accessories" placeholder="e.g. Charger, Mouse, Bag"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date of Clearance</label>
+                        <input type="date" name="date_of_clearance">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="asset_status">
+                            <option value="resigned">Resigned</option>
+                            <option value="deployed">Deployed</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea name="notes" placeholder="Additional notes..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('addModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Add Record</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ══ EDIT MODAL ══ *@
+<div class="modal-overlay" id="editModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Edit Record</h3>
+            <button class="modal-close" onclick="closeModal('editModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form method="post" action="/Resigned/Edit">
+
+    @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="editId">
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Employee Name <span class="required">*</span></label>
+                        <input type="text" name="employee_name" id="editEmployeeName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Department</label>
+                        <input type="text" name="department" id="editDepartment">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Model</label>
+                        <input type="text" name="model" id="editModel">
+                    </div>
+                    <div class="form-group">
+                        <label>Serial Tag</label>
+                        <input type="text" name="serial_tag" id="editSerialTag">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Accessories</label>
+                    <textarea name="accessories" id="editAccessories"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date of Clearance</label>
+                        <input type="date" name="date_of_clearance" id="editDateClearance">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="asset_status" id="editStatusSelect" onchange="toggleDeployedFields(this.value)">
+                            <option value="resigned">Resigned</option>
+                            <option value="deployed">Deployed</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="deployedFields" style="display:none">
+                    <div class="deployed-fields-wrap">
+                        <div class="deployed-fields-label">Deployment Info</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Deployed To <span class="required" id="deployedToRequired">*</span></label>
+                                <input type="text" name="deployed_to" id="editDeployedTo">
+                            </div>
+                            <div class="form-group">
+                                <label>Deployed Dept</label>
+                                <input type="text" name="deployed_dept" id="editDeployedDept">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Deployment Notes</label>
+                            <textarea name="deployed_notes" id="editDeployedNotes"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea name="notes" id="editNotes"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('editModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ══ VIEW MODAL ══ *@
+<div class="modal-overlay" id="viewModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="viewEmpName">Record Details</h3>
+            <button class="modal-close" onclick="closeModal('viewModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="view-grid">
+                <div class="view-field"><label>Department</label><span id="viewDept">—</span></div>
+                <div class="view-field"><label>Date of Clearance</label><span id="viewDate">—</span></div>
+                <div class="view-field"><label>Model</label><span id="viewModel">—</span></div>
+                <div class="view-field"><label>Serial Tag</label><span id="viewSerial">—</span></div>
+                <div class="view-field full"><label>Accessories</label><span id="viewAcc">—</span></div>
+                <div class="view-field full"><label>Notes</label><div class="view-notes" id="viewNotes">—</div></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('viewModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+@* ══ DEPLOYED VIEW MODAL ══ *@
+<div class="modal-overlay" id="deployedViewModal">
+    <div class="modal-sm">
+        <div class="modal-header">
+            <h3>Deployed Asset Details</h3>
+            <button class="modal-close" onclick="closeModal('deployedViewModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="dv-header">
+                <div class="dv-avatar" id="dvAvatar">–</div>
+                <div>
+                    <div class="dv-name" id="dvCurrentUser">—</div>
+                    <div class="dv-dept" id="dvCurrentDept">—</div>
+                </div>
+                <span class="badge-deployed" style="margin-left:auto">Deployed</span>
+            </div>
+            <div class="dv-former-box">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                </svg>
+                <div>
+                    <div class="dv-former-label">Former User (Resigned)</div>
+                    <div class="dv-former-name" id="dvFormerUser">—</div>
+                    <div class="dv-former-dept" id="dvFormerDept"></div>
+                </div>
+            </div>
+            <div class="detail-meta-grid">
+                <div class="detail-meta-box"><div class="detail-meta-label">Model</div><div class="detail-meta-value" id="dvModel">—</div></div>
+                <div class="detail-meta-box"><div class="detail-meta-label">Serial Tag</div><div class="detail-meta-value" id="dvSerial">—</div></div>
+                <div class="detail-meta-box"><div class="detail-meta-label">Date Deployed</div><div class="detail-meta-value blue" id="dvDeployedAt">—</div></div>
+                <div class="detail-meta-box"><div class="detail-meta-label">Date of Clearance</div><div class="detail-meta-value" id="dvClearanceDate">—</div></div>
+                <div class="detail-meta-box full"><div class="detail-meta-label">Accessories</div><div class="detail-meta-value light" id="dvAccessories">—</div></div>
+                <div class="detail-meta-box full"><div class="detail-meta-label">Deployment Notes</div><div class="detail-meta-value light" id="dvDeployNotes">—</div></div>
+                <div class="detail-meta-box full"><div class="detail-meta-label">Original Notes</div><div class="detail-meta-value light" id="dvNotes">—</div></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('deployedViewModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+@* ══ DEPLOY MODAL ══ *@
+<div class="modal-overlay" id="deployModal">
+    <div class="modal-sm">
+        <div class="modal-header">
+            <h3>Deploy Asset</h3>
+            <button class="modal-close" onclick="closeModal('deployModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form method="post" action="/Resigned/Deploy">
+
+    @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="deployId">
+            <div class="modal-body">
+                <div class="deploy-info-card">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+                    </svg>
+                    <div>
+                        <div class="di-model" id="deployAssetModel">—</div>
+                        <div class="di-serial" id="deployAssetSerial"></div>
+                        <div class="di-former">Former user: <strong id="deployAssetFormer">—</strong></div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>New User <span class="required">*</span></label>
+                        <input type="text" name="new_employee_name" id="deployEmployeeName" placeholder="e.g. Maria Santos" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Department</label>
+                        <input type="text" name="new_department" id="deployDepartment" placeholder="e.g. Engineering">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Deployment Notes</label>
+                    <textarea name="deploy_notes" placeholder="Optional notes..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('deployModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Deploy Asset</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ══ RECORD HISTORY MODAL ══ *@
+<div class="modal-overlay" id="recordHistoryModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Record History</h3>
+            <button class="modal-close" onclick="closeModal('recordHistoryModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="rec-hist-header">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <div class="rec-hist-header-info">
+                    <div class="rhi-model" id="recHistModel">—</div>
+                    <div class="rhi-sub" id="recHistSerial"></div>
+                </div>
+            </div>
+            <div class="rec-hist-scroll" id="recHistScroll">
+                <div class="rec-hist-loading">Loading…</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('recordHistoryModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+@* ══ DELETE CONFIRM MODAL ══ *@
+<div class="modal-overlay" id="deleteModal">
+    <div class="confirm-modal">
+        <div class="del-icon">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+        </div>
+        <h3>Delete Record?</h3>
+        <p id="deleteMsg">This action cannot be undone.</p>
+        <form method="post" action="/Resigned/Delete">
+
+    @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="deleteId">
+            <input type="hidden" name="current_tab" id="deleteTab">
+            <div class="confirm-modal-btns">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="submit" class="btn-danger">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ══ BACK TO INVENTORY CONFIRM MODAL ══ *@
+<div class="modal-overlay" id="backToInvModal">
+    <div class="confirm-modal">
+        <div class="inv-icon">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+        </div>
+        <h3>Return to Inventory?</h3>
+        <p id="backToInvMsg">This will mark the asset as resigned again.</p>
+        <form method="post" action="/Resigned/ReturnToInventory">
+
+    @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="backToInvId">
+            <div class="confirm-modal-btns">
+                <button type="button" class="btn-cancel" onclick="closeModal('backToInvModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Confirm</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ══ IMPORT RESIGNED MODAL ══ *@
+<div class="modal-overlay" id="importResignedModal">
+    <div class="modal" style="width:680px;">
+        <div class="modal-header">
+            <h3>Import Resigned Records from CSV</h3>
+            <button class="modal-close" onclick="closeModal('importResignedModal')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div id="importResStep1">
+                <p style="font-size:.78rem;color:#666;margin-bottom:14px;">Upload a CSV file. The <strong>employee_name</strong> column is required; all others are optional.</p>
+                <div style="background:#f8f9fe;border:1.5px solid #eef0f6;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:.7rem;color:#555;line-height:1.9;">
+                    <strong style="color:#333;">Required:</strong> employee_name<br>
+                    <strong style="color:#333;">Optional:</strong> department, model, serial_tag, accessories, date_of_clearance, notes
+                </div>
+                <div style="margin-bottom:14px;">
+                    <button type="button" onclick="downloadResignedTemplate()" style="display:inline-flex;align-items:center;gap:6px;font-size:.72rem;color:#25671E;padding:7px 14px;border:1.5px solid #c8e6c0;border-radius:8px;background:#f4fbf2;cursor:pointer;font-family:inherit;font-weight:600;">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download CSV Template
+                    </button>
+                </div>
+                <label style="display:block;font-size:.7rem;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Select CSV File</label>
+                <input type="file" id="importResFileInput" accept=".csv,text/csv" style="width:100%;padding:10px;border:1.5px solid #dde2ef;border-radius:8px;font-size:.78rem;font-family:inherit;background:#fff;cursor:pointer;">
+                <p id="importResFileError" style="color:#c81e1e;font-size:.72rem;margin-top:6px;display:none;"></p>
+            </div>
+            <div id="importResStep2" style="display:none;">
+                <div id="importResSummaryBar" style="display:flex;gap:10px;margin-bottom:14px;"></div>
+                <div style="overflow-x:auto;max-height:300px;overflow-y:auto;border:1.5px solid #eef0f6;border-radius:10px;">
+                    <table style="width:100%;border-collapse:collapse;min-width:500px;">
+                        <thead><tr id="importResHead" style="position:sticky;top:0;background:#fff;z-index:1;"></tr></thead>
+                        <tbody id="importResBody"></tbody>
+                    </table>
+                </div>
+                <p style="font-size:.68rem;color:#aaa;margin-top:8px;">Rows with no employee name will be skipped.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('importResignedModal')">Cancel</button>
+            <button type="button" id="importResPreviewBtn" class="btn-submit" onclick="previewResignedImport()" style="display:none;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15" height="15"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Preview
+            </button>
+            <form method="post" action="/Resigned/ImportRecords" id="importResSubmitForm" style="display:none;">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="rows_json" id="importResRowsJson">
+                <button type="submit" id="importResSubmitBtn" class="btn-submit">Import</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* ══ TOAST ══ *@
+<div class="toast" id="toastNotif">
+    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" id="toastIcon"></svg>
+    <span id="toastMsg"></span>
+</div>
+
+@section Scripts {
+<script>
+
+/* ── Export Resigned CSV ── */
+function exportResignedCSV() {
+    const rows = [['Employee Name','Department','Model','Serial Tag','Accessories','Date of Clearance','Notes','Status']];
+    document.querySelectorAll('#resTable tbody tr:not(.empty-row)').forEach(tr => {
+        if (tr.style.display === 'none') return;
+        try {
+            const data = JSON.parse(tr.dataset.row);
+            rows.push([
+                csvCell(data.employee_name),
+                csvCell(data.department),
+                csvCell(data.model),
+                csvCell(data.serial_tag),
+                csvCell(data.accessories),
+                csvCell(data.date_of_clearance),
+                csvCell(data.notes),
+                csvCell(data.asset_status)
+            ]);
+        } catch(e) {}
+    });
+    triggerCSVDownload(rows, 'resigned_export.csv');
+}
+
+function csvCell(v) {
+    const s = String(v || '');
+    return (s.includes(',') || s.includes('"') || s.includes('\n'))
+        ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function triggerCSVDownload(rows, filename) {
+    const csv  = rows.map(r => r.join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+}
+
+/* ── Import Resigned ── */
+let importResRows = [];
+
+function openImportResignedModal() {
+    importResRows = [];
+    document.getElementById('importResStep1').style.display = '';
+    document.getElementById('importResStep2').style.display = 'none';
+    document.getElementById('importResPreviewBtn').style.display = 'none';
+    document.getElementById('importResSubmitForm').style.display = 'none';
+    document.getElementById('importResFileInput').value = '';
+    document.getElementById('importResFileError').style.display = 'none';
+    openModal('importResignedModal');
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const fi = document.getElementById('importResFileInput');
+    if (fi) fi.addEventListener('change', function () {
+        const errEl   = document.getElementById('importResFileError');
+        const prevBtn = document.getElementById('importResPreviewBtn');
+        errEl.style.display = 'none'; prevBtn.style.display = 'none';
+        if (!this.files?.[0]) return;
+        if (!this.files[0].name.toLowerCase().endsWith('.csv')) {
+            errEl.textContent = 'Please select a .csv file.';
+            errEl.style.display = 'block'; return;
+        }
+        prevBtn.style.display = '';
+    });
+});
+
+function previewResignedImport() {
+    const file = document.getElementById('importResFileInput').files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        const parsed = parseCSV(e.target.result);
+        if (parsed.length < 2) {
+            document.getElementById('importResFileError').textContent = 'CSV appears empty or has no data rows.';
+            document.getElementById('importResFileError').style.display = 'block'; return;
+        }
+        const headers  = parsed[0].map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+        const dataRows = parsed.slice(1);
+        importResRows  = []; let skipped = 0;
+        dataRows.forEach(row => {
+            const obj = {}; headers.forEach((h, i) => { obj[h] = (row[i] || '').trim(); });
+            if (!obj.employee_name) { skipped++; return; }
+            importResRows.push(obj);
+        });
+        const ready = importResRows.length, total = dataRows.length;
+        document.getElementById('importResStep1').style.display = 'none';
+        document.getElementById('importResStep2').style.display = '';
+        document.getElementById('importResPreviewBtn').style.display = 'none';
+        document.getElementById('importResSubmitForm').style.display = '';
+        document.getElementById('importResRowsJson').value = JSON.stringify(importResRows);
+        document.getElementById('importResSubmitBtn').textContent = 'Import ' + ready + ' Record' + (ready !== 1 ? 's' : '');
+        document.getElementById('importResSummaryBar').innerHTML =
+            '<div style="flex:1;background:#f4fbf2;border:1.5px solid #c8e6c0;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:1.1rem;font-weight:600;color:#0e9a4a;">' + ready + '</div><div style="font-size:.65rem;color:#555;margin-top:2px;">Ready to import</div></div>' +
+            (skipped ? '<div style="flex:1;background:#fde8e8;border:1.5px solid #f5c2c2;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:1.1rem;font-weight:600;color:#c81e1e;">' + skipped + '</div><div style="font-size:.65rem;color:#555;margin-top:2px;">Skipped</div></div>' : '') +
+            '<div style="flex:1;background:#f8f9fe;border:1.5px solid #eef0f6;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:1.1rem;font-weight:600;color:#333;">' + total + '</div><div style="font-size:.65rem;color:#555;margin-top:2px;">Total rows</div></div>';
+
+        const cols    = ['employee_name','department','model','serial_tag','accessories','date_of_clearance','notes'];
+        const clabels = ['Employee Name','Department','Model','Serial Tag','Accessories','Date of Clearance','Notes'];
+        document.getElementById('importResHead').innerHTML =
+            clabels.map(l => '<th style="text-align:left;padding:10px 14px;font-size:.63rem;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.5px solid #eef0f6;white-space:nowrap;">' + l + '</th>').join('') +
+            '<th style="border-bottom:1.5px solid #eef0f6;"></th>';
+        document.getElementById('importResBody').innerHTML =
+            importResRows.slice(0, 50).map(r =>
+                '<tr style="border-bottom:1px solid #f2f4fb;">' +
+                cols.map(c => '<td style="padding:10px 14px;font-size:.73rem;color:#333;white-space:nowrap;">' + (r[c] || '<span style="color:#ccc;">—</span>') + '</td>').join('') +
+                '<td style="padding:10px 14px;"><span style="background:#e3fbec;color:#0e9a4a;padding:3px 10px;border-radius:20px;font-size:.6rem;font-weight:700;">OK</span></td></tr>'
+            ).join('') +
+            (importResRows.length > 50 ? '<tr><td colspan="8" style="text-align:center;padding:10px;font-size:.7rem;color:#aaa;">… and ' + (importResRows.length - 50) + ' more rows</td></tr>' : '');
+    };
+    reader.readAsText(file);
+}
+
+function downloadResignedTemplate() {
+    const csv = 'employee_name,department,model,serial_tag,accessories,date_of_clearance,notes\r\nJuan Dela Cruz,Accounting,Dell Latitude E7450,SN-00123,"Charger, Mouse",2025-06-01,Cleared all items\r\nMaria Santos,Engineering,HP EliteBook,SN-00456,,2025-06-05,\r\n';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'resigned_import_template.csv'; a.click();
+    URL.revokeObjectURL(url);
+}
+
+function parseCSV(text) {
+    const rows = []; let cur = [], field = '', inQ = false;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (inQ) { if (c === '"') { if (text[i+1] === '"') { field += '"'; i++; } else inQ = false; } else field += c; }
+        else {
+            if (c === '"') inQ = true;
+            else if (c === ',') { cur.push(field); field = ''; }
+            else if (c === '\n' || c === '\r') {
+                if (c === '\r' && text[i+1] === '\n') i++;
+                cur.push(field); field = '';
+                if (cur.some(v => v.trim())) rows.push(cur); cur = [];
+            } else field += c;
+        }
+    }
+    if (field || cur.length) { cur.push(field); if (cur.some(v => v.trim())) rows.push(cur); }
+    return rows;
+}
+
+const FETCH_HISTORY_URL  = '@Url.Action("FetchHistory","Resigned")';
+const FETCH_ALL_HIST_URL = '@Url.Action("FetchAllHistory","Resigned")';
+
+/* ── Dropdown ── */
+function toggleDropdown(id, e) {
+    e.stopPropagation();
+    const menu = document.getElementById(id);
+    const isOpen = menu.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const spaceB = window.innerHeight - rect.bottom;
+        menu.style.right = (window.innerWidth - rect.right) + 'px';
+        if (spaceB < 160) { menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px'; menu.style.top = 'auto'; }
+        else { menu.style.top = (rect.bottom + 4) + 'px'; menu.style.bottom = 'auto'; }
+        menu.classList.add('open');
+    }
+}
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-menu.open').forEach(m => m.classList.remove('open'));
+}
+document.addEventListener('click', closeAllDropdowns);
+
+/* ── Modal helpers ── */
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.addEventListener('DOMContentLoaded', function () {
+    // modal overlay click-outside
+    document.querySelectorAll('.modal-overlay').forEach(el => {
+        el.addEventListener('click', function (e) { if (e.target === this) closeModal(this.id); });
+    });
+
+    // clickable row → open view modal
+    document.querySelectorAll('tr[data-row]').forEach(tr => {
+        tr.addEventListener('click', function (e) {
+            if (e.target.closest('.action-wrap')) return;
+            const data = JSON.parse(this.dataset.row);
+            if (data.asset_status === 'deployed') openDeployedView(data);
+            else openViewModal(data);
+        });
+    });
+});
+
+/* ── Add modal ── */
+function openAddModal() { openModal('addModal'); }
+
+/* ── Edit modal ── */
+function toggleDeployedFields(status) {
+    const df = document.getElementById('deployedFields');
+    const rs = document.getElementById('deployedToRequired');
+    df.style.display = status === 'deployed' ? 'block' : 'none';
+    if (rs) rs.style.display = status === 'deployed' ? 'inline' : 'none';
+}
+function openEditModal(data) {
+    document.getElementById('editId').value            = data.id;
+    document.getElementById('editEmployeeName').value  = data.employee_name;
+    document.getElementById('editDepartment').value    = data.department        || '';
+    document.getElementById('editModel').value         = data.model             || '';
+    document.getElementById('editSerialTag').value     = data.serial_tag        || '';
+    document.getElementById('editAccessories').value   = data.accessories       || '';
+    document.getElementById('editDateClearance').value = data.date_of_clearance || '';
+    document.getElementById('editNotes').value         = data.notes             || '';
+    const status = data.asset_status || 'resigned';
+    document.getElementById('editStatusSelect').value  = status;
+    toggleDeployedFields(status);
+    if (status === 'deployed') {
+        document.getElementById('editDeployedTo').value    = data.deployed_to    || '';
+        document.getElementById('editDeployedDept').value  = data.deployed_dept  || '';
+        document.getElementById('editDeployedNotes').value = data.deployed_notes || '';
+    }
+    openModal('editModal');
+}
+
+/* ── View modal ── */
+function openViewModal(data) {
+    document.getElementById('viewEmpName').textContent = data.employee_name      || '—';
+    document.getElementById('viewDept').textContent    = data.department         || '—';
+    document.getElementById('viewDate').textContent    = data.date_of_clearance  || 'Not set';
+    document.getElementById('viewModel').textContent   = data.model              || '—';
+    document.getElementById('viewSerial').textContent  = data.serial_tag         || '—';
+    document.getElementById('viewAcc').textContent     = data.accessories        || '—';
+    document.getElementById('viewNotes').textContent   = data.notes              || '—';
+    openModal('viewModal');
+}
+
+/* ── Deployed view modal ── */
+function openDeployedView(data) {
+    const initials = (data.deployed_to || '?').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    document.getElementById('dvAvatar').textContent        = initials;
+    document.getElementById('dvCurrentUser').textContent   = data.deployed_to        || '—';
+    document.getElementById('dvCurrentDept').textContent   = data.deployed_dept       || '—';
+    document.getElementById('dvFormerUser').textContent    = data.employee_name       || '—';
+    document.getElementById('dvFormerDept').textContent    = data.department          || '';
+    document.getElementById('dvModel').textContent         = data.model               || '—';
+    document.getElementById('dvSerial').textContent        = data.serial_tag          || '—';
+    document.getElementById('dvDeployedAt').textContent    = data.deployed_at         || '—';
+    document.getElementById('dvClearanceDate').textContent = data.date_of_clearance   || '—';
+    document.getElementById('dvAccessories').textContent   = data.accessories         || '—';
+    document.getElementById('dvDeployNotes').textContent   = data.deployed_notes      || '—';
+    document.getElementById('dvNotes').textContent         = data.notes               || '—';
+    openModal('deployedViewModal');
+}
+
+/* ── Deploy modal ── */
+function openDeployModal(data) {
+    document.getElementById('deployId').value                = data.id;
+    document.getElementById('deployAssetModel').textContent  = data.model         || 'Unknown Model';
+    document.getElementById('deployAssetSerial').textContent = data.serial_tag    ? 'Serial: ' + data.serial_tag : '';
+    document.getElementById('deployAssetFormer').textContent = data.employee_name || '—';
+    document.getElementById('deployEmployeeName').value      = '';
+    document.getElementById('deployDepartment').value        = '';
+    openModal('deployModal');
+}
+
+/* ── Delete modal ── */
+function openDeleteModal(data) {
+    document.getElementById('deleteId').value  = data.id;
+    document.getElementById('deleteTab').value = data.asset_status || 'resigned';
+    document.getElementById('deleteMsg').textContent =
+        'You are about to permanently delete the record for "' + (data.employee_name || '') + '".';
+    openModal('deleteModal');
+}
+
+/* ── Back to Inventory ── */
+function confirmBackToInventory(data) {
+    document.getElementById('backToInvId').value = data.id;
+    document.getElementById('backToInvMsg').textContent =
+        'Return "' + (data.deployed_to || '') + '" back to inventory? This will reset the asset status to Resigned.';
+    openModal('backToInvModal');
+}
+
+/* ── Record history modal ── */
+function openRecordHistory(data) {
+    document.getElementById('recHistModel').textContent  = data.model || data.employee_name || '—';
+    document.getElementById('recHistSerial').textContent = data.serial_tag ? 'Serial: ' + data.serial_tag : '';
+    document.getElementById('recHistScroll').innerHTML   = '<div class="rec-hist-loading">Loading history…</div>';
+    openModal('recordHistoryModal');
+    fetch(FETCH_HISTORY_URL + '?id=' + data.id)
+        .then(r => r.json())
+        .then(items => { document.getElementById('recHistScroll').innerHTML = buildTimelineHTML(items, false); })
+        .catch(() => { document.getElementById('recHistScroll').innerHTML = '<div class="rec-hist-loading">Failed to load history.</div>'; });
+}
+
+/* ── Build Timeline HTML ── */
+function buildTimelineHTML(items, showAsset) {
+    if (!items || items.length === 0)
+        return '<div class="history-empty">No history found.</div>';
+
+    const groups = {};
+    items.forEach(item => {
+        const day = (item.created_at || '').split(' ')[0] || 'Unknown';
+        if (!groups[day]) groups[day] = [];
+        groups[day].push(item);
+    });
+
+    const dotCls = action => {
+        const a = (action || '').toLowerCase().replace(/\s+/g, '');
+        if (a.includes('created'))   return 'created';
+        if (a.includes('edited'))    return 'edited';
+        if (a.includes('deployed'))  return 'deployed';
+        if (a.includes('inventory')) return 'backtoinventory';
+        if (a.includes('deleted'))   return 'deleted';
+        return 'default';
+    };
+
+    let html = '<div class="timeline">';
+    Object.entries(groups).forEach(([day, dayItems]) => {
+        html += '<div class="tl-date-group"><div class="tl-date-label">' + day + '</div>';
+        dayItems.forEach(item => {
+            const dc   = dotCls(item.action);
+            const time = (item.created_at || '').split(' ')[1] || '';
+            let assetHtml = '';
+            if (showAsset && item.employee_name) {
+                assetHtml = '<div class="tl-meta" style="margin-top:5px;"><div class="tl-asset-info">'
+                    + '<span class="tl-asset-label">' + esc(item.employee_name) + '</span>'
+                    + (item.model      ? '<span class="tl-asset-sub">' + esc(item.model)      + '</span>' : '')
+                    + (item.serial_tag ? '<span class="tl-asset-sub">' + esc(item.serial_tag) + '</span>' : '')
+                    + '</div></div>';
+            }
+            let actorHtml = '';
+            if (item.actor) {
+                actorHtml = '<div class="tl-actor"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">'
+                    + '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
+                    + '</svg>' + esc(item.actor) + '</div>';
+            }
+            html += '<div class="tl-item">'
+                + '<div class="tl-dot ' + dc + '"></div>'
+                + '<div class="tl-top"><div>'
+                + '<span class="tl-action-badge ' + dc + '">' + esc(item.action) + '</span>'
+                + assetHtml + actorHtml
+                + '</div><span class="tl-time">' + time + '</span></div>'
+                + (item.details ? '<div class="tl-details">' + esc(item.details) + '</div>' : '')
+                + '</div>';
+        });
+        html += '</div>';
+    });
+    html += '</div>';
+    return html;
+}
+
+function esc(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* ── Get row data from nearest tr[data-row] ── */
+function getRowData(el) {
+    const tr = el.closest('tr[data-row]');
+    return tr ? JSON.parse(tr.dataset.row) : {};
+}
+
+/* ── Toast ── */
+@if (!string.IsNullOrEmpty(Model.ToastMsg))
+{
+    <text>
+(function () {
+    const toast = document.getElementById('toastNotif');
+    const type  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ToastType));
+    toast.classList.add('toast-' + type);
+    document.getElementById('toastMsg').textContent = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ToastMsg));
+    document.getElementById('toastIcon').innerHTML  = type === 'success'
+        ? '<path d="M20 6 9 17l-5-5"/>'
+        : '<path d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>';
+    setTimeout(() => toast.classList.add('show'), 100);
+    setTimeout(() => toast.classList.remove('show'), 3500);
+})();
+    </text>
+}
+</script>
+
+@* History tab functions — only emitted on history tab *@
+@if (isHist)
+{
+<script>
+let allHistoryItems  = [];
+let histFilterActive = 'all';
+let histSearchActive = '';
+function loadAllHistory() {
+    fetch(FETCH_ALL_HIST_URL)
+        .then(r => r.json())
+        .then(items => { allHistoryItems = items; renderHistoryTab(); })
+        .catch(() => { document.getElementById('historyScrollArea').innerHTML = '<div class="history-empty">Failed to load history.</div>'; });
+}
+function filterHistory(q) { histSearchActive = q.toLowerCase(); renderHistoryTab(); }
+function setHistFilter(filter, btn) {
+    histFilterActive = filter;
+    document.querySelectorAll('#histFilterRow .hf-chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderHistoryTab();
+}
+function renderHistoryTab() {
+    let items = allHistoryItems;
+    if (histFilterActive !== 'all') items = items.filter(i => i.action === histFilterActive);
+    if (histSearchActive) items = items.filter(i =>
+        [i.action, i.actor, i.details, i.employee_name, i.model, i.serial_tag].join(' ').toLowerCase().includes(histSearchActive));
+    document.getElementById('historyScrollArea').innerHTML = buildTimelineHTML(items, true);
+}
+document.addEventListener('DOMContentLoaded', loadAllHistory);
+</script>
+}
+
+@* Pagination — only emitted on non-history tabs *@
+@if (!isHist)
+{
+<script>
+const PAGE_SIZE = 50;
+let currentPage = 1, currentQuery = '';
+function liveSearch(query) { currentQuery = query.toLowerCase(); currentPage = 1; renderTable(); }
+function renderTable() {
+    const allRows  = Array.from(document.querySelectorAll('#resTable tbody tr:not(.empty-row)'));
+    const filtered = allRows.filter(row => {
+        const m = row.textContent.toLowerCase().includes(currentQuery);
+        row.style.display = 'none';
+        return m;
+    });
+    document.querySelectorAll('#resTable tbody tr.empty-row').forEach(r => r.remove());
+    if (filtered.length === 0) {
+        const tr = document.createElement('tr');
+        tr.className = 'empty-row';
+        tr.innerHTML = '<td colspan="7">No records match your search.</td>';
+        document.querySelector('#resTable tbody').appendChild(tr);
+        document.getElementById('paginationBar').style.display = 'none';
+        return;
+    }
+    const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+    if (currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const end   = Math.min(start + PAGE_SIZE, filtered.length);
+    filtered.forEach((row, i) => { row.style.display = (i >= start && i < end) ? '' : 'none'; });
+    document.getElementById('paginationInfo').textContent =
+        'Showing ' + (start + 1) + '–' + end + ' of ' + filtered.length + ' record' + (filtered.length !== 1 ? 's' : '');
+    document.getElementById('paginationBar').style.display = 'flex';
+    const btns = document.getElementById('paginationBtns');
+    btns.innerHTML = '';
+    const prev = document.createElement('button');
+    prev.className = 'page-btn'; prev.disabled = currentPage === 1;
+    prev.innerHTML = '<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>';
+    prev.onclick = () => { currentPage--; renderTable(); };
+    btns.appendChild(prev);
+    getPageRange(currentPage, totalPages).forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'page-btn' + (p === currentPage ? ' active' : '');
+        if (p === '...') { btn.disabled = true; btn.textContent = '…'; }
+        else { btn.textContent = p; btn.onclick = () => { currentPage = p; renderTable(); }; }
+        btns.appendChild(btn);
+    });
+    const next = document.createElement('button');
+    next.className = 'page-btn'; next.disabled = currentPage === totalPages;
+    next.innerHTML = '<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>';
+    next.onclick = () => { currentPage++; renderTable(); };
+    btns.appendChild(next);
+}
+function getPageRange(current, total) {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const pages = [1];
+    if (current > 3) pages.push('...');
+    for (let p = Math.max(2, current - 1); p <= Math.min(total - 1, current + 1); p++) pages.push(p);
+    if (current < total - 2) pages.push('...');
+    pages.push(total);
+    return pages;
+}
+document.addEventListener('DOMContentLoaded', renderTable);
+</script>
+}
+}
+}

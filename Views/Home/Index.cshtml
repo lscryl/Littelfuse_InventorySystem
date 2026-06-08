@@ -1,0 +1,59 @@
+﻿index
+
+@* ============================================================
+   File: Views/Home/Index.cshtml
+   Purpose: Default landing page. Shows DB connection status.
+   '@' prefix means C# code inside HTML (Razor syntax).
+   ============================================================ *@
+
+@{
+    ViewData["Title"] = "IT Inventory System - Home";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f2f5;
+            margin: 0;
+        }
+        .card {
+            background: white;
+            padding: 40px 60px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 { color: #2c3e50; }
+        .status { 
+            margin-top: 20px; 
+            font-size: 1.1rem; 
+            padding: 10px 20px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🖥️ IT Inventory Management System</h1>
+        <p>ASP.NET Core MVC — Converted from PHP</p>
+
+        @* ViewBag.DbStatus was set in the Controller *@
+        <div class="status">
+            <strong>Database Status:</strong><br />
+            @ViewBag.DbStatus
+        </div>
+    </div>
+</body>
+</html>

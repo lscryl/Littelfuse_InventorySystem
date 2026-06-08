@@ -1,0 +1,280 @@
+@* ============================================================
+   File: Views/Account/Login.cshtml
+   Purpose: Login page UI — converted from login.php
+   '@' prefix = C# code inside HTML (Razor syntax)
+   ============================================================ *@
+
+@model ITInventorySystem.Models.LoginViewModel
+
+@{
+    // Don't use the main _Layout.cshtml for login page
+    // Login page has its own full HTML structure
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login – IT Office Inventory</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --green-dark:  #1a4d14;
+            --green-mid:   #25671E;
+            --green-light: #48A111;
+            --green-pale:  #e8f5e2;
+            --bg:          #f0f2f8;
+            --card:        #ffffff;
+            --text:        #111;
+            --muted:       #888;
+            --border:      #dde2ef;
+            --error-bg:    #fde8e8;
+            --error:       #c81e1e;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -180px; left: -180px;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(37,103,30,.18) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -160px; right: -160px;
+            width: 520px; height: 520px;
+            background: radial-gradient(circle, rgba(72,161,17,.13) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .grid-bg {
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(37,103,30,.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(37,103,30,.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        .login-wrap {
+            position: relative; z-index: 1;
+            width: 100%; max-width: 420px;
+            padding: 0 20px;
+            animation: fadeUp .5s ease both;
+        }
+
+        @@keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-card {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 36px 44px 36px;
+            box-shadow: 0 8px 48px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06);
+            border: 1.5px solid rgba(255,255,255,.8);
+        }
+
+        .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+        .brand-logo { height: 36px; width: auto; display: block; }
+        .brand-text h1 { font-size: .9rem; font-weight: 700; color: var(--text); line-height: 1.2; }
+        .brand-text p  { font-size: .68rem; color: var(--muted); margin-top: 2px; }
+
+        .divider {
+            height: 1.5px;
+            background: linear-gradient(90deg, var(--green-pale), transparent);
+            margin-bottom: 28px;
+        }
+
+        .login-heading { font-size: 1.55rem; font-weight: 700; color: var(--text); margin-bottom: 6px; letter-spacing: -.02em; }
+        .login-sub     { font-size: .78rem; color: var(--muted); margin-bottom: 28px; }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block; font-size: .7rem; font-weight: 600; color: #555;
+            text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px;
+        }
+
+        .input-wrap { position: relative; }
+        .input-icon {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+            width: 16px; height: 16px; color: #bbb; pointer-events: none;
+        }
+
+        .input-wrap input {
+            width: 100%; padding: 12px 42px 12px 42px;
+            border: 1.5px solid var(--border); border-radius: 10px;
+            font-size: .82rem; font-family: 'DM Sans', sans-serif;
+            color: var(--text); background: #fafbff; outline: none;
+            transition: border-color .2s, box-shadow .2s, background .2s;
+        }
+
+        .input-wrap input:focus {
+            border-color: var(--green-mid); background: #fff;
+            box-shadow: 0 0 0 3px rgba(37,103,30,.1);
+        }
+
+        .input-wrap input::placeholder { color: #ccc; font-size: .8rem; }
+
+        .toggle-pw {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; padding: 4px;
+            color: #bbb; display: flex; align-items: center; transition: color .2s;
+        }
+        .toggle-pw:hover { color: var(--green-mid); }
+        .toggle-pw svg { width: 16px; height: 16px; }
+
+        .error-box {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--error-bg); border: 1.5px solid #f5c2c2;
+            border-radius: 10px; padding: 12px 14px; margin-bottom: 20px;
+            font-size: .78rem; color: var(--error); font-weight: 500;
+            animation: shake .35s ease;
+        }
+        .error-box svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+        @@keyframes shake {
+            0%,100% { transform: translateX(0); }
+            20%      { transform: translateX(-6px); }
+            40%      { transform: translateX(6px); }
+            60%      { transform: translateX(-4px); }
+            80%      { transform: translateX(4px); }
+        }
+
+        .validation-summary {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--error-bg); border: 1.5px solid #f5c2c2;
+            border-radius: 10px; padding: 12px 14px; margin-bottom: 20px;
+            font-size: .78rem; color: var(--error); font-weight: 500;
+        }
+
+        .btn-login {
+            width: 100%; padding: 13px;
+            background: var(--green-mid); color: #fff;
+            border: none; border-radius: 10px;
+            font-size: .85rem; font-weight: 700; font-family: 'DM Sans', sans-serif;
+            cursor: pointer; transition: background .2s, transform .15s, box-shadow .2s;
+            box-shadow: 0 4px 14px rgba(37,103,30,.3); margin-top: 8px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-login:hover  { background: var(--green-light); box-shadow: 0 6px 20px rgba(37,103,30,.4); transform: translateY(-1px); }
+        .btn-login:active { transform: translateY(0); }
+        .btn-login svg { width: 16px; height: 16px; }
+    </style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<div class="login-wrap">
+    <div class="login-card">
+
+        <div class="brand">
+            @* asp-append-version adds cache-busting to image URL *@
+            <img src="~/images/logo.png" alt="Logo" class="brand-logo" />
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="login-heading">Welcome back</div>
+        <div class="login-sub">Sign in to access the inventory system</div>
+
+        @* Show validation errors (replaces PHP $error variable) *@
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="error-box">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 8v4m0 4h.01"/>
+                </svg>
+                @* asp-validation-summary shows all model errors *@
+                <div asp-validation-summary="All"></div>
+            </div>
+        }
+
+        @* asp-action and asp-controller generate the correct form POST URL *@
+        <form asp-action="Login" asp-controller="Account" method="post">
+
+            @* Anti-forgery token (security) — auto-injected by asp-action *@
+
+            <div class="form-group">
+                <label asp-for="Username">Username</label>
+                <div class="input-wrap">
+                    <svg class="input-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    @* asp-for binds input to LoginViewModel.Username *@
+                    <input asp-for="Username"
+                           placeholder="Enter your username"
+                           autocomplete="username" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Password">Password</label>
+                <div class="input-wrap">
+                    <svg class="input-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <rect x="3" y="11" width="18" height="11" rx="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    @* asp-for binds input to LoginViewModel.Password *@
+                    <input asp-for="Password"
+                           id="passwordInput"
+                           placeholder="Enter your password"
+                           autocomplete="current-password" />
+                    <button type="button" class="toggle-pw" onclick="togglePassword()">
+                        <svg id="eyeIcon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-login">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                    <polyline points="10 17 15 12 10 7"/>
+                    <line x1="15" y1="12" x2="3" y2="12"/>
+                </svg>
+                Sign In
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+function togglePassword() {
+    const input = document.getElementById('passwordInput');
+    const icon  = document.getElementById('eyeIcon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+    } else {
+        input.type = 'password';
+        icon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+    }
+}
+</script>
+</body>
+</html>
